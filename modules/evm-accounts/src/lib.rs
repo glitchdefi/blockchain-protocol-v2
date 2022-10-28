@@ -13,7 +13,7 @@ use frame_support::{
   decl_error, decl_event, decl_module, decl_storage, ensure,
   storage::{with_transaction, TransactionOutcome},
   traits::{Currency, HandleLifetime, OnKilledAccount, ReservableCurrency},
-  weights::Weight,
+  weights::{Weight, Pays},
   StorageMap,
 };
 use frame_system::ensure_signed;
@@ -111,7 +111,7 @@ decl_module! {
 
     /// Claim account mapping between Substrate accounts and EVM accounts.
     /// Ensure eth_address has not been mapped.
-    #[weight = T::WeightInfo::claim_account()]
+    #[weight = (T::WeightInfo::claim_account(), Pays::No)]
     pub fn claim_account(origin, eth_address: EvmAddress, eth_signature: EcdsaSignature) {
       let who = ensure_signed(origin)?;
 
@@ -161,7 +161,7 @@ impl<T: Config> Module<T> {
   // Constructs the message that Ethereum RPC's `personal_sign` and `eth_sign`
   // would sign.
   pub fn ethereum_signable_message(what: &[u8], extra: &[u8]) -> Vec<u8> {
-    let prefix = b"clover evm:";
+    let prefix = b"glitch evm:";
     let mut l = prefix.len() + what.len() + extra.len();
     let mut rev = Vec::new();
     while l > 0 {
