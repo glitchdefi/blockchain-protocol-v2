@@ -1,5 +1,5 @@
 [package]
-name = 'clover-runtime'
+name = 'glitch-runtime'
 authors = ['Clover Network <https://github.com/clover-network>']
 edition = "2021"
 license = 'GPL-3.0'
