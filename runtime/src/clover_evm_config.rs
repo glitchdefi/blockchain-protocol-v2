@@ -39,7 +39,7 @@ impl CloverEvmConfig {
 			stack_limit: 1024,
 			memory_limit: usize::max_value(),
 			call_stack_limit: 1024,
-			create_contract_limit: Some(0xc000),
+			create_contract_limit: None, //we remove limits on contract limit creation
 			call_stipend: 2300,
 			has_delegate_call: true,
 			has_create2: true,
