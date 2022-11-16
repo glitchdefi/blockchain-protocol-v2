@@ -43,13 +43,13 @@ fn load_spec(
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
   Ok(match id {
     "dev" => Box::new(chain_spec::development_config(para_id)?),
-    "local" => Box::new(chain_spec::local_testnet_config()?),
-    "glitch_testnet" => Box::new(chain_spec::glitch_testnet_config()?),
-    "glitch_mainnet" => Box::new(chain_spec::glitch_mainnet_config()?),
-    "glitch_uat" => Box::new(chain_spec::glitch_uat_config()?),
-    "" | "testnet" => Box::new(chain_spec::glitch_testnet_config()?),
-    "mainnet" => Box::new(chain_spec::glitch_mainnet_config()?),
-    "uat" => Box::new(chain_spec::glitch_uat_config()?),
+    "local" => Box::new(chain_spec::local_testnet_config(para_id)?),
+    "glitch_testnet" => Box::new(chain_spec::glitch_testnet_config(para_id)?),
+    "glitch_mainnet" => Box::new(chain_spec::glitch_mainnet_config(para_id)?),
+    "glitch_uat" => Box::new(chain_spec::glitch_uat_config(para_id)?),
+    "" | "testnet" => Box::new(chain_spec::glitch_testnet_config(para_id)?),
+    "mainnet" => Box::new(chain_spec::glitch_mainnet_config(para_id)?),
+    "uat" => Box::new(chain_spec::glitch_uat_config(para_id)?),
     path => Box::new(chain_spec::ChainSpec::from_json_file(
       std::path::PathBuf::from(path),
     )?),
@@ -140,6 +140,10 @@ pub fn run() -> sc_cli::Result<()> {
   let cli = Cli::from_args();
 
   match &cli.subcommand {
+    Some(Subcommand::Key(cmd)) => cmd.run(&cli),
+    Some(Subcommand::Sign(cmd)) => cmd.run(),
+    Some(Subcommand::Verify(cmd)) => cmd.run(),
+    Some(Subcommand::Vanity(cmd)) => cmd.run(),
     Some(Subcommand::BuildSpec(cmd)) => {
       let runner = cli.create_runner(cmd)?;
       runner.sync_run(|config| cmd.run(config.chain_spec, config.network))

@@ -1,17 +1,17 @@
- use glitch_node_runtime::{
-    AccountId, AuthorityDiscoveryConfig, BabeConfig, Balance, BalancesConfig, ContractsConfig,
-    EVMConfig, EthereumConfig, GenesisConfig, GrandpaConfig, ImOnlineId, IndicesConfig,
+ use glitch_runtime::{
+    AccountId, Balance, BalancesConfig,
+    EVMConfig, EthereumConfig, GenesisConfig, ImOnlineId, IndicesConfig,
     SessionConfig, SessionKeys, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-    DOLLARS,CENTS,MILLICENTS, WASM_BINARY, RevenueConfig
+    AuraId,
+    DOLLARS,CENTS,MILLICENTS, WASM_BINARY
 };
+use cumulus_primitives_core::ParaId;
 use pallet_evm::GenesisAccount;
 use primitive_types::H160;
 use sc_service::ChainType;
 use serde_json as json;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{sr25519, Pair, Public, U256};
-use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::{
     traits::{IdentifyAccount, Verify},
     Perbill,
@@ -22,6 +22,9 @@ use sc_telemetry::TelemetryEndpoints;
 use hex_literal::hex;
 use sp_core::crypto::UncheckedInto;
 use log::warn;
+use serde::{Deserialize, Serialize};
+use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
+use pallet_staking::Forcing;
 
 // The URL for the telemetry server.
 // const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -45,18 +48,8 @@ const DEFAULT_PROPERTIES_MAINNET: &str = r#"
 }
 "#;
 
-fn session_keys(
-    grandpa: GrandpaId,
-    babe: BabeId,
-    im_online: ImOnlineId,
-    authority_discovery: AuthorityDiscoveryId,
-) -> SessionKeys {
-    SessionKeys {
-        grandpa,
-        babe,
-        im_online,
-        authority_discovery,
-    }
+fn session_keys(aura_id: AuraId) -> SessionKeys {
+    SessionKeys { aura: aura_id }
 }
 
 /// Generate a crypto pair from seed.
@@ -64,6 +57,23 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
     TPublic::Pair::from_string(&format!("//{}", seed), None)
         .expect("static values are valid; qed")
         .public()
+}
+
+/// The extensions for the [`ChainSpec`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
+#[serde(deny_unknown_fields)]
+pub struct Extensions {
+    /// The relay chain of the Parachain.
+    pub relay_chain: String,
+    /// The id of the Parachain.
+    pub para_id: u32,
+}
+
+impl Extensions {
+    /// Try to get the extension from the given `ChainSpec`.
+    pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Self> {
+        sc_chain_spec::get_extension(chain_spec.extensions())
+    }
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -76,25 +86,12 @@ where
     AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-/// Generate an Babe authority key.
-pub fn authority_keys_from_seed(
-    s: &str,
-) -> (
-    AccountId,
-    AccountId,
-    BabeId,
-    GrandpaId,
-    ImOnlineId,
-    AuthorityDiscoveryId,
-) {
-    (
-        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", s)),
-        get_account_id_from_seed::<sr25519::Public>(s),
-        get_from_seed::<BabeId>(s),
-        get_from_seed::<GrandpaId>(s),
-        get_from_seed::<ImOnlineId>(s),
-        get_from_seed::<AuthorityDiscoveryId>(s),
-    )
+/// Generate authority key.
+pub fn authority_keys_from_seed(s: &str) -> (AccountId, AuraId) {
+  (
+    get_account_id_from_seed::<sr25519::Public>(s),
+    get_from_seed::<AuraId>(s),
+  )
 }
 
 fn endowed_evm_account() -> BTreeMap<H160, GenesisAccount> {
@@ -132,7 +129,7 @@ fn get_endowed_evm_accounts(endowed_account: Vec<H160>) -> BTreeMap<H160, Genesi
     evm_accounts
 }
 
-pub fn development_config() -> Result<ChainSpec, String> {
+pub fn development_config(id: ParaId) -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(
@@ -157,6 +154,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
                 ],
                 true,
                 dev_endowed_evm_accounts(),
+                id,
             )
         },
         // Bootnodes
@@ -165,6 +163,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
         None,
         // Protocol ID
         Some("glitch_nodelocal"),
+        None,
         // Properties
         Some(json::from_str(DEFAULT_PROPERTIES_TESTNET).unwrap()),
         // Extensions
@@ -172,7 +171,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
     ))
 }
 
-pub fn local_testnet_config() -> Result<ChainSpec, String> {
+pub fn local_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(
@@ -208,6 +207,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
                 ],
                 true,
                 endowed_evm_account(),
+                id,
             )
         },
         // Bootnodes
@@ -216,6 +216,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
         None,
         // Protocol ID
         Some("glitch_nodelocal"),
+        None,
         // Properties
         Some(json::from_str(DEFAULT_PROPERTIES_TESTNET).unwrap()),
         // Extensions
@@ -224,7 +225,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 }
 
 //Glitch testnet
-pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
+pub fn glitch_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
   let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
   Ok(ChainSpec::from_genesis(
       //Name
@@ -244,11 +245,7 @@ pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//1//discovery"
         (
           hex!["aee0df231aed47a99beb26960d156de55751a48741b1cfcfa99e42a5f499e63f"].into(),
-          hex!["aee0df231aed47a99beb26960d156de55751a48741b1cfcfa99e42a5f499e63f"].into(),
-          hex!["2eed8720f0cc2697ef251da006980c0873cfc108f4c91a96744eedf1b59aff44"].unchecked_into(), // babe key
-          hex!["04315411f66a58e838690017ac4102374e4f1dd3f429176ebaa15d55d61d9e80"].unchecked_into(), // grandpa
-          hex!["a86ab6e2458078bc49f7277ba00642c1ba2336f8001dd7de6494fd0751a1c057"].unchecked_into(), // imonline
-          hex!["1eaa69cbee5e16337c52440455fbc97b839d01bdc4e6d158cf3061d44ba4fc7b"].unchecked_into(), // discovery
+          hex!["2eed8720f0cc2697ef251da006980c0873cfc108f4c91a96744eedf1b59aff44"].unchecked_into(),
         ),
         // SECRET=""
         // 5G6nMq5x8xm3PLxyKXkKEkzAjzQLGbuiDarjBWp6d5XHg3FM
@@ -259,11 +256,7 @@ pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//2//discovery"
         (
           hex!["5a44973835f643d6d2c45c4490e1c0095755d469ae5db20d480c937588abd164"].into(),
-          hex!["5a44973835f643d6d2c45c4490e1c0095755d469ae5db20d480c937588abd164"].into(),
-          hex!["381bab65c6c3c0a9bfb06e7a6c8a3b109bed9e97303b22fcd0157ba0871a6566"].unchecked_into(), // babe
-          hex!["72f22b083c995d0c4bf07a46f7ad326bcc25780483c8eb0523f53ed2a5b7915d"].unchecked_into(), // grandpa
-          hex!["46bd8c5f164df0a6db9199a74376aea3cf8f0d4ecc8b4da5289ebf70c6d0496a"].unchecked_into(), // imonline
-          hex!["98a818de9aa0ea6d376a8690bfebb24b1d5d7d9c6f36e1ab45983b0fa7f2e328"].unchecked_into(), // discovery
+          hex!["381bab65c6c3c0a9bfb06e7a6c8a3b109bed9e97303b22fcd0157ba0871a6566"].unchecked_into(),
         ),
         // SECRET=""
         // subkey inspect "$SECRET//glitch//3//validator"
@@ -273,11 +266,7 @@ pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//3//discovery"
         (
           hex!["94f1d376734418cc137900c7ad4bb5a4911af24d00e4fd72803e3817a50c334d"].into(),
-          hex!["94f1d376734418cc137900c7ad4bb5a4911af24d00e4fd72803e3817a50c334d"].into(),
-          hex!["6eb9b6f2680b69714d38d0d34108288c9498616589afa6ca453f7a71a88cc64c"].unchecked_into(), // babe
-          hex!["0b9f59981f7b9a654f9819c7cb774f3fe39fc9e4c5ac22202f77be52677a5fd3"].unchecked_into(), // grandpa
-          hex!["1efe62dcf7953227eb99413539b2d58c584f8568ab72d847310a17030882ef0d"].unchecked_into(), // imonline
-          hex!["82aba2132ab4ff2e7fcafeb4d4932f73413d08b7f3a54e18ea2c8d4cffa88e2b"].unchecked_into(), // discovery
+          hex!["6eb9b6f2680b69714d38d0d34108288c9498616589afa6ca453f7a71a88cc64c"].unchecked_into(),
         ),
       ],
           // 5D5MHV7hy6LTcRUSL3cVYhGecar59RAj1UwnLLEFikUySxsX
@@ -305,7 +294,8 @@ pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
               hex!["f0f15284b61f6ed6a3fc292395e0fa3195e79052b1ec8bca74298f5de5134754"].into(),
       ],
           true,
-          endowed_evm_account()
+          endowed_evm_account(),
+          id,
       ),
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
@@ -321,6 +311,7 @@ pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
       None,
       // Protocol ID
       Some("glitch_testnet"),
+      None,
       // Properties
       Some(json::from_str(DEFAULT_PROPERTIES_TESTNET).unwrap()),
       // Extension
@@ -329,7 +320,7 @@ pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
 }
 
 //Glitch Mainnet
-pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
+pub fn glitch_mainnet_config(id: ParaId) -> Result<ChainSpec, String> {
   let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
   Ok(ChainSpec::from_genesis(
       //Name
@@ -349,11 +340,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//1//discovery"
         (
           hex!["68f1d67412d6528992d391025dbc36a3261c1efaf22066dff692b2e4c1fb726a"].into(),
-          hex!["68f1d67412d6528992d391025dbc36a3261c1efaf22066dff692b2e4c1fb726a"].into(),
-          hex!["2eed8720f0cc2697ef251da006980c0873cfc108f4c91a96744eedf1b59aff44"].unchecked_into(), // babe key
-          hex!["04315411f66a58e838690017ac4102374e4f1dd3f429176ebaa15d55d61d9e80"].unchecked_into(), // grandpa
-          hex!["a86ab6e2458078bc49f7277ba00642c1ba2336f8001dd7de6494fd0751a1c057"].unchecked_into(), // imonline
-          hex!["1eaa69cbee5e16337c52440455fbc97b839d01bdc4e6d158cf3061d44ba4fc7b"].unchecked_into(), // discovery
+          hex!["2eed8720f0cc2697ef251da006980c0873cfc108f4c91a96744eedf1b59aff44"].unchecked_into(),
         ),
         // SECRET=""
         // 5G6nMq5x8xm3PLxyKXkKEkzAjzQLGbuiDarjBWp6d5XHg3FM
@@ -364,11 +351,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//2//discovery"
         (
           hex!["2600c75f5fe2ddb65676361769e637069cb2041622979ba118a68993279deb0b"].into(),
-          hex!["2600c75f5fe2ddb65676361769e637069cb2041622979ba118a68993279deb0b"].into(),
-          hex!["381bab65c6c3c0a9bfb06e7a6c8a3b109bed9e97303b22fcd0157ba0871a6566"].unchecked_into(), // babe
-          hex!["72f22b083c995d0c4bf07a46f7ad326bcc25780483c8eb0523f53ed2a5b7915d"].unchecked_into(), // grandpa
-          hex!["46bd8c5f164df0a6db9199a74376aea3cf8f0d4ecc8b4da5289ebf70c6d0496a"].unchecked_into(), // imonline
-          hex!["98a818de9aa0ea6d376a8690bfebb24b1d5d7d9c6f36e1ab45983b0fa7f2e328"].unchecked_into(), // discovery
+          hex!["381bab65c6c3c0a9bfb06e7a6c8a3b109bed9e97303b22fcd0157ba0871a6566"].unchecked_into(),
         ),
         // SECRET=""
         // subkey inspect "$SECRET//glitch//3//validator"
@@ -378,11 +361,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//3//discovery"
         (
           hex!["5c790cbdc11a4bf8934250eb27bf26f2ea05db67b4f5fa48a760bcfd9ef43b49"].into(),
-          hex!["5c790cbdc11a4bf8934250eb27bf26f2ea05db67b4f5fa48a760bcfd9ef43b49"].into(),
-          hex!["6eb9b6f2680b69714d38d0d34108288c9498616589afa6ca453f7a71a88cc64c"].unchecked_into(), // babe
-          hex!["0b9f59981f7b9a654f9819c7cb774f3fe39fc9e4c5ac22202f77be52677a5fd3"].unchecked_into(), // grandpa
-          hex!["1efe62dcf7953227eb99413539b2d58c584f8568ab72d847310a17030882ef0d"].unchecked_into(), // imonline
-          hex!["82aba2132ab4ff2e7fcafeb4d4932f73413d08b7f3a54e18ea2c8d4cffa88e2b"].unchecked_into(), // discovery
+          hex!["6eb9b6f2680b69714d38d0d34108288c9498616589afa6ca453f7a71a88cc64c"].unchecked_into(),
         ),
       ],
           // root
@@ -400,7 +379,8 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
               hex!["004028fd0cf9675e2c1698c5c539f5b273e73c490cd3fb54f32923e630e66922"].into(),
           ],
           true,
-          endowed_evm_account()
+          endowed_evm_account(),
+          id,
       ),
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
@@ -425,6 +405,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
       None,
       // Protocol ID
       Some("glitch_mainnet"),
+      None,
       // Properties
       Some(json::from_str(DEFAULT_PROPERTIES_MAINNET).unwrap()),
       // Extension
@@ -433,7 +414,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
 }
 
 // Glitch UAT
-pub fn glitch_uat_config() -> Result<ChainSpec, String> {
+pub fn glitch_uat_config(id: ParaId) -> Result<ChainSpec, String> {
   let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
   Ok(ChainSpec::from_genesis(
       //Name
@@ -452,14 +433,8 @@ pub fn glitch_uat_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//1//imonline"
         // subkey inspect "$SECRET//glitch//1//discovery"
         (
-          // hex!["aee0df231aed47a99beb26960d156de55751a48741b1cfcfa99e42a5f499e63f"].into(),
-          // hex!["aee0df231aed47a99beb26960d156de55751a48741b1cfcfa99e42a5f499e63f"].into(),
           hex!["a25483fe9cca2461c83a00513f07377f34116fc35f5fefec53fca9e59d1d2f06"].into(),
-          hex!["a25483fe9cca2461c83a00513f07377f34116fc35f5fefec53fca9e59d1d2f06"].into(),
-          hex!["2eed8720f0cc2697ef251da006980c0873cfc108f4c91a96744eedf1b59aff44"].unchecked_into(), // babe key
-          hex!["04315411f66a58e838690017ac4102374e4f1dd3f429176ebaa15d55d61d9e80"].unchecked_into(), // grandpa
-          hex!["a86ab6e2458078bc49f7277ba00642c1ba2336f8001dd7de6494fd0751a1c057"].unchecked_into(), // imonline
-          hex!["1eaa69cbee5e16337c52440455fbc97b839d01bdc4e6d158cf3061d44ba4fc7b"].unchecked_into(), // discovery
+          hex!["2eed8720f0cc2697ef251da006980c0873cfc108f4c91a96744eedf1b59aff44"].unchecked_into(),
         ),
         // SECRET=""
         // 5G6nMq5x8xm3PLxyKXkKEkzAjzQLGbuiDarjBWp6d5XHg3FM
@@ -469,14 +444,8 @@ pub fn glitch_uat_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//2//imonline"
         // subkey inspect "$SECRET//glitch//2//discovery"
         (
-          // hex!["5a44973835f643d6d2c45c4490e1c0095755d469ae5db20d480c937588abd164"].into(),
-          // hex!["5a44973835f643d6d2c45c4490e1c0095755d469ae5db20d480c937588abd164"].into(),
           hex!["1408fed1c2d32cf914326b1ec33edbeb4427fdaf411e27f9dd77b6bcaf280f54"].into(),
-          hex!["1408fed1c2d32cf914326b1ec33edbeb4427fdaf411e27f9dd77b6bcaf280f54"].into(),
-          hex!["381bab65c6c3c0a9bfb06e7a6c8a3b109bed9e97303b22fcd0157ba0871a6566"].unchecked_into(), // babe
-          hex!["72f22b083c995d0c4bf07a46f7ad326bcc25780483c8eb0523f53ed2a5b7915d"].unchecked_into(), // grandpa
-          hex!["46bd8c5f164df0a6db9199a74376aea3cf8f0d4ecc8b4da5289ebf70c6d0496a"].unchecked_into(), // imonline
-          hex!["98a818de9aa0ea6d376a8690bfebb24b1d5d7d9c6f36e1ab45983b0fa7f2e328"].unchecked_into(), // discovery
+          hex!["381bab65c6c3c0a9bfb06e7a6c8a3b109bed9e97303b22fcd0157ba0871a6566"].unchecked_into(),
         ),
         // SECRET=""
         // subkey inspect "$SECRET//glitch//3//validator"
@@ -485,14 +454,8 @@ pub fn glitch_uat_config() -> Result<ChainSpec, String> {
         // subkey inspect "$SECRET//glitch//3//imonline"
         // subkey inspect "$SECRET//glitch//3//discovery"
         (
-          // hex!["94f1d376734418cc137900c7ad4bb5a4911af24d00e4fd72803e3817a50c334d"].into(),
-          // hex!["94f1d376734418cc137900c7ad4bb5a4911af24d00e4fd72803e3817a50c334d"].into(),
           hex!["3443862d2ff8f750e46ff0424ad541b8a34896a3112babf96054362325c49977"].into(),
-          hex!["3443862d2ff8f750e46ff0424ad541b8a34896a3112babf96054362325c49977"].into(),
-          hex!["6eb9b6f2680b69714d38d0d34108288c9498616589afa6ca453f7a71a88cc64c"].unchecked_into(), // babe
-          hex!["0b9f59981f7b9a654f9819c7cb774f3fe39fc9e4c5ac22202f77be52677a5fd3"].unchecked_into(), // grandpa
-          hex!["1efe62dcf7953227eb99413539b2d58c584f8568ab72d847310a17030882ef0d"].unchecked_into(), // imonline
-          hex!["82aba2132ab4ff2e7fcafeb4d4932f73413d08b7f3a54e18ea2c8d4cffa88e2b"].unchecked_into(), // discovery
+          hex!["6eb9b6f2680b69714d38d0d34108288c9498616589afa6ca453f7a71a88cc64c"].unchecked_into(),
         ),
       ],
           hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(),
@@ -500,7 +463,8 @@ pub fn glitch_uat_config() -> Result<ChainSpec, String> {
               hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(),
           ],
           true,
-          endowed_evm_account()
+          endowed_evm_account(),
+          id,
       ),
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
@@ -513,6 +477,7 @@ pub fn glitch_uat_config() -> Result<ChainSpec, String> {
       None,
       // Protocol ID
       Some("glitch_uat"),
+      None,
       // Properties
       Some(json::from_str(DEFAULT_PROPERTIES_MAINNET).unwrap()),
       // Extension
@@ -523,18 +488,12 @@ pub fn glitch_uat_config() -> Result<ChainSpec, String> {
 /// Configure initial storage state for FRAME modules.
 fn glitch_genesis(
     wasm_binary: &[u8],
-    initial_authorities: Vec<(
-        AccountId,
-        AccountId,
-        BabeId,
-        GrandpaId,
-        ImOnlineId,
-        AuthorityDiscoveryId,
-    )>,
+    initial_authorities: Vec<(AccountId, AuraId)>,
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
     endowed_eth_accounts: BTreeMap<H160, GenesisAccount>,
+    id: ParaId,
 ) -> GenesisConfig {
     let enable_println = true;
     const TOTAL_SUPPLY: Balance = 88_888_888 * DOLLARS;
@@ -564,12 +523,11 @@ fn glitch_genesis(
 
 
     GenesisConfig {
-        frame_system: Some(SystemConfig {
+        system: SystemConfig {
             // Add Wasm runtime to storage.
             code: wasm_binary.to_vec(),
-            changes_trie_config: Default::default(),
-        }),
-        pallet_balances: Some(BalancesConfig {
+        },
+        balances: BalancesConfig {
             // Configure endowed accounts with initial balance of 1 << 60.
             balances: endowed_accounts
                 .iter()
@@ -581,64 +539,68 @@ fn glitch_genesis(
                         .map(|x| (x.0.clone(), AUTHOR_BALANCE)),
                 )
                 .collect(),
-        }),
-        pallet_contracts: Some(ContractsConfig {
-            current_schedule: pallet_contracts::Schedule {
-                enable_println, // this should only be enabled on development chains
-                ..Default::default()
-            },
-        }),
-        pallet_evm: Some(EVMConfig {
-            accounts: endowed_eth_accounts,
-        }),
-        pallet_ethereum: Some(EthereumConfig {}),
-        pallet_indices: Some(IndicesConfig { indices: vec![] }),
-        pallet_session: Some(SessionConfig {
-            keys: initial_authorities
-                .iter()
-                .map(|x| {
-                    (
-                        x.0.clone(),
-                        x.0.clone(),
-                        session_keys(x.3.clone(), x.2.clone(), x.4.clone(), x.5.clone()),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        }),
-        pallet_staking: Some(StakingConfig {
+        },
+        // pallet_contracts: ContractsConfig {
+        //   current_schedule: pallet_contracts::Schedule::default()
+        //   .enable_println(enable_println),
+        // },
+        evm: EVMConfig {
+          accounts: endowed_eth_accounts,
+        },
+        ethereum: EthereumConfig {},
+        indices: IndicesConfig { indices: vec![] },
+        //sudo: SudoConfig {
+        //  // Assign network admin rights.
+        //  key: Some(root_key),
+        //},
+        parachain_info: glitch_runtime::ParachainInfoConfig { parachain_id: id },
+        collator_selection: glitch_runtime::CollatorSelectionConfig {
+          invulnerables: initial_authorities
+            .iter()
+            .cloned()
+            .map(|(acc, _)| acc)
+            .collect(),
+          candidacy_bond: 1 * DOLLARS,
+          ..Default::default()
+        },
+        council: Default::default(),
+        technical_committee: Default::default(),
+        democracy: Default::default(),
+        treasury: Default::default(),
+        elections_phragmen: Default::default(),
+        technical_membership: Default::default(),
+        vesting: Default::default(),
+        session: glitch_runtime::SessionConfig {
+          keys: initial_authorities
+            .iter()
+            .cloned()
+            .map(|(acc, aura)| {
+              (
+                acc.clone(),        // account id
+                acc.clone(),        // validator id
+                session_keys(aura), // session keys
+              )
+            })
+            .collect(),
+        },
+        aura: Default::default(),
+        aura_ext: Default::default(),
+        base_fee: Default::default(),
+        sudo: SudoConfig {
+            // Assign network admin rights.
+            key: Some(root_key),
+        },
+        staking: glitch_runtime::StakingConfig {
             validator_count: initial_authorities.len() as u32,
             minimum_validator_count: initial_authorities.len() as u32,
             stakers: initial_authorities
                 .iter()
-                .map(|x| (x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator))
+                .map(|x| (x.0.clone(), x.0.clone(), STASH, StakerStatus::Validator))
                 .collect(),
-            invulnerables: vec![],
+            invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+            force_era: Forcing::ForceNone,
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
-        }),
-        pallet_babe: Some(BabeConfig {
-            authorities: vec![],
-        }),
-        pallet_grandpa: Some(GrandpaConfig {
-            authorities: vec![],
-        }),
-        pallet_im_online: Some(Default::default()),
-        pallet_authority_discovery: Some(AuthorityDiscoveryConfig { keys: vec![] }),
-        pallet_sudo: Some(SudoConfig {
-            // Assign network admin rights.
-            key: root_key,
-        }),
-        pallet_collective_Instance1: Some(Default::default()),
-        pallet_collective_Instance2: Some(Default::default()),
-        pallet_democracy: Some(Default::default()),
-        pallet_treasury: Some(Default::default()),
-        pallet_fund: Some(Default::default()),
-        pallet_revenue_fund: Some(Default::default()),
-        pallet_elections_phragmen: Some(Default::default()),
-        pallet_membership_Instance1: Some(Default::default()),
-        pallet_revenue: Some(RevenueConfig {
-            // admin_genesis: get_account_id_from_seed::<sr25519::Public>("Alice")
-            admin_genesis: AccountId::from_str("0x88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567").unwrap()
-        })
+        },
     }
 }

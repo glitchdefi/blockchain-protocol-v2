@@ -26,7 +26,7 @@ use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
 
-use clover_runtime::{self, opaque::Block, RuntimeApi};
+use glitch_runtime::{self, opaque::Block, RuntimeApi};
 use fc_rpc::{CacheTask, DebugTask, OverrideHandle};
 use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use sc_cli::SubstrateCli;
@@ -53,11 +53,11 @@ impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
   type ExtendHostFunctions = fp_trace_ext::evm_ext::HostFunctions;
 
   fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-    clover_runtime::api::dispatch(method, data)
+    glitch_runtime::api::dispatch(method, data)
   }
 
   fn native_version() -> sc_executor::NativeVersion {
-    clover_runtime::native_version()
+    glitch_runtime::native_version()
   }
 }
 
