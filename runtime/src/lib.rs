@@ -7,7 +7,6 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use codec::Decode;
-use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use sp_arithmetic::PerThing;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160, H256, U256};
 use sp_runtime::curve::PiecewiseLinear;
@@ -63,10 +62,23 @@ pub use frame_support::{
   ConsensusEngineId, PalletId, StorageValue,
 };
 use frame_system::{limits, EnsureRoot};
+use pallet_grandpa::{fg_primitives, AuthorityId as GrandpaId};
 pub use pallet_balances::Call as BalancesCall;
 use pallet_evm::{Account as EVMAccount, EnsureAddressNever, EnsureAddressRoot, FeeCalculator, Runner};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::{Perbill, Permill, RuntimeAppPublic};
+use pallet_session::historical as session_historical;
+
+use runtime_parachains::{
+	configuration as parachains_configuration, disputes as parachains_disputes,
+	dmp as parachains_dmp, hrmp as parachains_hrmp, inclusion as parachains_inclusion,
+	initializer as parachains_initializer, origin as parachains_origin, paras as parachains_paras,
+	paras_inherent as parachains_paras_inherent, reward_points as parachains_reward_points,
+	runtime_api_impl::v2 as parachains_runtime_api_impl, scheduler as parachains_scheduler,
+	session_info as parachains_session_info, shared as parachains_shared, ump as parachains_ump,
+};
+
+use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 
 pub use primitives::{
   currency::*, AccountId, AccountIndex, Amount, Balance, BlockNumber, CurrencyId, EraIndex, Hash,
@@ -82,7 +94,6 @@ use xcm::latest::BodyId;
 
 pub use constants::time::*;
 use impls::{MergeAccountEvm, WeightToFee};
-use xcm_config::DotLocation;
 
 mod asset_location;
 mod clover_evm_config;
@@ -99,11 +110,8 @@ mod precompiles;
 use precompiles::CloverPrecompiles;
 
 mod asset_trader;
-mod xcm_config;
 
 use crate::asset_location::AssetLocation;
-
-pub type AuraId = sp_consensus_aura::sr25519::AuthorityId;
 
 pub type AssetId = u64;
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
@@ -127,7 +135,10 @@ pub mod opaque {
 
 impl_opaque_keys! {
   pub struct SessionKeys {
-    pub aura: Aura,
+    pub grandpa: Grandpa,
+    pub babe: Babe,
+    pub im_online: ImOnline,
+    pub authority_discovery: AuthorityDiscovery,
   }
 }
 
@@ -238,7 +249,7 @@ impl frame_system::Config for Runtime {
   type SystemWeightInfo = frame_system::weights::SubstrateWeight<Runtime>;
   type SS58Prefix = SS58Prefix;
   /// The set code logic of the parachain.
-  type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
+  type OnSetCode = ();
   type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
@@ -301,10 +312,10 @@ parameter_types! {
 }
 
 impl pallet_authorship::Config for Runtime {
-  type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+  type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
   type UncleGenerations = UncleGenerations;
   type FilterUncle = ();
-  type EventHandler = Staking;
+  type EventHandler = (Staking, ImOnline);
 }
 
 /// clover account
@@ -358,7 +369,7 @@ impl pallet_evm::Config for Runtime {
   type PrecompilesType = CloverPrecompiles<Self>;
   type PrecompilesValue = PrecompilesValue;
   type ChainId = GlitchTestnetChainId;
-  type FindAuthor = EthereumFindAuthor<Aura>;
+  type FindAuthor = EthereumFindAuthor<Babe>;
   type BlockGasLimit = BlockGasLimit;
   type OnChargeTransaction = ();
   fn config() -> &'static evm::Config {
@@ -373,7 +384,7 @@ impl<F: FindAuthor<u32>> FindAuthor<H160> for EthereumFindAuthor<F> {
     I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
   {
     if let Some(author_index) = F::find_author(digests) {
-      let authority_id = Aura::authorities()[author_index as usize].clone();
+      let (authority_id, _) = Babe::authorities()[author_index as usize].clone();
       return Some(H160::from_slice(&authority_id.to_raw_vec()[4..24]));
     }
     None
@@ -775,27 +786,6 @@ parameter_types! {
   pub const ExecutiveBody: BodyId = BodyId::Executive;
 }
 
-/// We allow root and the Relay Chain council to execute privileged asset operations.
-pub type AssetsForceOrigin =
-  EitherOfDiverse<EnsureRoot<AccountId>, EnsureXcm<IsMajorityOfBody<DotLocation, ExecutiveBody>>>;
-
-impl pallet_assets::Config for Runtime {
-  type Event = Event;
-  type Balance = Balance;
-  type AssetId = AssetId;
-  type Currency = Balances;
-  type ForceOrigin = AssetsForceOrigin;
-  type AssetDeposit = AssetDeposit;
-  type MetadataDepositBase = MetadataDepositBase;
-  type MetadataDepositPerByte = MetadataDepositPerByte;
-  type ApprovalDeposit = ApprovalDeposit;
-  type StringLimit = AssetsStringLimit;
-  type Freezer = ();
-  type Extra = ();
-  type WeightInfo = weights::pallet_assets::WeightInfo<Runtime>;
-  type AssetAccountDeposit = AssetAccountDeposit;
-}
-
 impl pallet_utility::Config for Runtime {
   type Event = Event;
   type Call = Call;
@@ -1177,34 +1167,7 @@ parameter_types! {
   pub const ClaimsModuleId: PalletId = PalletId(*b"clvclaim");
 }
 
-impl clover_claims::Config for Runtime {
-  type PalletId = ClaimsModuleId;
-  type Event = Event;
-  type Currency = Balances;
-  type Prefix = Prefix;
-}
-
-parameter_types! {
-  pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
-  pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
-}
-
-impl cumulus_pallet_parachain_system::Config for Runtime {
-  type Event = Event;
-  // type OnValidationData = ();
-  type OnSystemEvent = ();
-  type SelfParaId = parachain_info::Pallet<Runtime>;
-  type DmpMessageHandler = DmpQueue;
-  type ReservedDmpWeight = ReservedDmpWeight;
-  type OutboundXcmpMessageSource = XcmpQueue;
-  type XcmpMessageHandler = XcmpQueue;
-  type ReservedXcmpWeight = ReservedXcmpWeight;
-  type CheckAssociatedRelayNumber = RelayNumberStrictlyIncreases;
-}
-
 impl parachain_info::Config for Runtime {}
-
-impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 parameter_types! {
   pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
@@ -1226,12 +1189,6 @@ impl pallet_session::Config for Runtime {
   type Keys = SessionKeys;
   // type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
   type WeightInfo = ();
-}
-
-impl pallet_aura::Config for Runtime {
-  type AuthorityId = AuraId;
-  type DisabledValidators = ();
-  type MaxAuthorities = MaxAuthorities;
 }
 
 pub mod currency {
@@ -1316,6 +1273,94 @@ impl asset_config::Config for Runtime {
   type AssetLocation = AssetLocation;
 }
 
+parameter_types! {
+	pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
+	pub ReportLongevity: u64 =
+		BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
+}
+
+impl pallet_babe::Config for Runtime {
+	type EpochDuration = EpochDuration;
+	type ExpectedBlockTime = ExpectedBlockTime;
+
+	// session module is the trigger
+	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+
+	type DisabledValidators = Session;
+
+	type KeyOwnerProofSystem = Historical;
+
+	type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
+		KeyTypeId,
+		pallet_babe::AuthorityId,
+	)>>::Proof;
+
+	type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
+		KeyTypeId,
+		pallet_babe::AuthorityId,
+	)>>::IdentificationTuple;
+
+	type HandleEquivocation =
+		pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
+
+	type WeightInfo = ();
+
+	type MaxAuthorities = MaxAuthorities;
+}
+
+parameter_types! {
+	pub const MaxKeys: u32 = 10_000;
+	pub const MaxPeerInHeartbeats: u32 = 10_000;
+	pub const MaxPeerDataEncodingSize: u32 = 1_000;
+}
+
+impl pallet_im_online::Config for Runtime {
+  type AuthorityId = ImOnlineId;
+  type Event = Event;
+  type ValidatorSet = Historical;
+  type NextSessionRotation = Babe;
+  type ReportUnresponsiveness = Offences;
+  type UnsignedPriority = ImOnlineUnsignedPriority;
+  type WeightInfo = weights::pallet_im_online::WeightInfo<Runtime>;
+  type MaxKeys = MaxKeys;
+  type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
+  type MaxPeerDataEncodingSize = MaxPeerDataEncodingSize;
+}
+
+impl pallet_grandpa::Config for Runtime {
+  type Event = Event;
+  type Call = Call;
+
+  type KeyOwnerProof =
+    <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+
+  type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
+    KeyTypeId,
+    GrandpaId,
+  )>>::IdentificationTuple;
+
+  type KeyOwnerProofSystem = Historical;
+
+  type HandleEquivocation = pallet_grandpa::EquivocationHandler<
+    Self::KeyOwnerIdentification,
+    Offences,
+    ReportLongevity,
+  >;
+
+  type WeightInfo = ();
+  type MaxAuthorities = MaxAuthorities;
+}
+
+impl pallet_authority_discovery::Config for Runtime {
+	type MaxAuthorities = MaxAuthorities;
+}
+
+impl pallet_offences::Config for Runtime {
+	type Event = Event;
+	type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
+	type OnOffenceHandler = Staking;
+}
+
 // TODO:
 // parameter_types! {
 //     pub const RevenueModuleId: ModuleId = ModuleId(*b"py/rvnsr");
@@ -1354,8 +1399,7 @@ construct_runtime!(
     Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
     Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
 
-    ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>, ValidateUnsigned} = 5,
-
+    Offences: pallet_offences::{Pallet, Storage, Event} = 5,
     TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 6,
 
     ParachainInfo: parachain_info::{Pallet, Storage, Config} = 7,
@@ -1363,53 +1407,46 @@ construct_runtime!(
     // Collator support. the order of these 4 are important and shall not change.
     Authorship: pallet_authorship::{Pallet, Call, Storage} = 8,
     CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 9,
-    Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 10,
-    Aura: pallet_aura::{Pallet, Config<T>} = 11,
-    AuraExt: cumulus_pallet_aura_ext::{Pallet, Config} = 12,
-
+    // Babe must be before session.
+    Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 10,
+    Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 11,
+    Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned} = 12,
+    ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 13,
+    AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config} = 14,
+    
     // Governance.
-    Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 13,
-    Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 14,
-    TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 15,
-    ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 16,
-    TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 17,
-    Treasury: pallet_treasury::{Pallet, Call, Storage, Event<T>, Config} = 18,
+    Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
+    Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 16,
+    TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 17,
+    ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
+    TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 19,
+    Treasury: pallet_treasury::{Pallet, Call, Storage, Event<T>, Config} = 20,
 
     // Smart contracts modules
-    Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 19,
-    EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 20,
-    Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin, Config, } = 21,
+    Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 21,
+    EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 22,
+    Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin, Config, } = 23,
 
-    Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 22,
+    Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
 
     // Utility module.
-    Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 23,
-    Utility: pallet_utility::{Pallet, Call, Event} = 24,
+    Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 25,
+    Utility: pallet_utility::{Pallet, Call, Event} = 26,
 
-    Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 25,
-    Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 26,
+    Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 27,
+    Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 28,
 
-    Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 27,
+    Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 29,
 
-    Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 28,
-    Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 29,
+    Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 30,
+    Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 31,
 
     // account module
-    EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>} = 30,
+    EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>} = 32,
 
-    CloverClaims: clover_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 31,
-    BaseFee: pallet_base_fee::{Pallet, Call, Storage, Config<T>, Event} = 32,
+    BaseFee: pallet_base_fee::{Pallet, Call, Storage, Config<T>, Event} = 34,
 
-    XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
-    PolkadotXcm: pallet_xcm::{Pallet, Call, Storage, Event<T>, Origin} = 34,
-    CumulusXcm: cumulus_pallet_xcm::{Pallet, Call, Event<T>, Origin} = 35,
-    DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 36,
-    OrmlXcm: orml_xcm::{Pallet, Call, Event<T>} = 37,
     AssetConfig: asset_config::{Pallet, Call, Storage, Event<T>} = 40,
-
-    // The main stage.
-    Assets: pallet_assets::{Pallet, Call, Storage, Event<T>} = 50,
-    XTokens: orml_xtokens::{Pallet, Call, Storage, Event<T>} = 51,
     
     Staking: pallet_staking::{Pallet, Call, Storage, Config<T>, Event<T>} = 52,
     
@@ -1420,8 +1457,7 @@ construct_runtime!(
     
     ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 56,
     VoterList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 57,
-
-    Spambot: cumulus_ping::{Pallet, Call, Storage, Event<T>} = 99,
+    Historical: session_historical::{Pallet} = 58,
   }
 );
 
@@ -1508,17 +1544,14 @@ impl fp_self_contained::SelfContainedCall for Call {
   }
 }
 
+/// The BABE epoch configuration at genesis.
+pub const BABE_GENESIS_EPOCH_CONFIG: babe_primitives::BabeEpochConfiguration =
+  babe_primitives::BabeEpochConfiguration {
+    c: PRIMARY_PROBABILITY,
+    allowed_slots: babe_primitives::AllowedSlots::PrimaryAndSecondaryVRFSlots,
+  };
+
 impl_runtime_apis! {
-  impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
-    fn slot_duration() -> sp_consensus_aura::SlotDuration {
-      sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration())
-    }
-
-    fn authorities() -> Vec<AuraId> {
-      Aura::authorities().into_inner()
-    }
-  }
-
   impl sp_api::Core<Block> for Runtime {
     fn version() -> RuntimeVersion {
       VERSION
@@ -1573,6 +1606,95 @@ impl_runtime_apis! {
   impl sp_offchain::OffchainWorkerApi<Block> for Runtime {
     fn offchain_worker(header: &<Block as BlockT>::Header) {
       Executive::offchain_worker(header)
+    }
+  }
+
+  impl fg_primitives::GrandpaApi<Block> for Runtime {
+    fn grandpa_authorities() -> Vec<(GrandpaId, u64)> {
+      Grandpa::grandpa_authorities()
+    }
+
+    fn current_set_id() -> fg_primitives::SetId {
+      Grandpa::current_set_id()
+    }
+
+    fn submit_report_equivocation_unsigned_extrinsic(
+      equivocation_proof: fg_primitives::EquivocationProof<
+        <Block as BlockT>::Hash,
+        sp_runtime::traits::NumberFor<Block>,
+      >,
+      key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
+    ) -> Option<()> {
+      let key_owner_proof = key_owner_proof.decode()?;
+
+      Grandpa::submit_unsigned_equivocation_report(
+        equivocation_proof,
+        key_owner_proof,
+      )
+    }
+
+    fn generate_key_ownership_proof(
+      _set_id: fg_primitives::SetId,
+      authority_id: fg_primitives::AuthorityId,
+    ) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
+      use codec::Encode;
+
+      Historical::prove((fg_primitives::KEY_TYPE, authority_id))
+        .map(|p| p.encode())
+        .map(fg_primitives::OpaqueKeyOwnershipProof::new)
+    }
+  }
+
+  impl babe_primitives::BabeApi<Block> for Runtime {
+    fn configuration() -> babe_primitives::BabeGenesisConfiguration {
+      // The choice of `c` parameter (where `1 - c` represents the
+      // probability of a slot being empty), is done in accordance to the
+      // slot duration and expected target block time, for safely
+      // resisting network delays of maximum two seconds.
+      // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
+      babe_primitives::BabeGenesisConfiguration {
+        slot_duration: Babe::slot_duration(),
+        epoch_length: EpochDuration::get(),
+        c: BABE_GENESIS_EPOCH_CONFIG.c,
+        genesis_authorities: Babe::authorities().to_vec(),
+        randomness: Babe::randomness(),
+        allowed_slots: BABE_GENESIS_EPOCH_CONFIG.allowed_slots,
+      }
+    }
+
+    fn current_epoch_start() -> babe_primitives::Slot {
+      Babe::current_epoch_start()
+    }
+
+    fn current_epoch() -> babe_primitives::Epoch {
+      Babe::current_epoch()
+    }
+
+    fn next_epoch() -> babe_primitives::Epoch {
+      Babe::next_epoch()
+    }
+
+    fn generate_key_ownership_proof(
+      _slot: babe_primitives::Slot,
+      authority_id: babe_primitives::AuthorityId,
+    ) -> Option<babe_primitives::OpaqueKeyOwnershipProof> {
+      use codec::Encode;
+
+      Historical::prove((babe_primitives::KEY_TYPE, authority_id))
+        .map(|p| p.encode())
+        .map(babe_primitives::OpaqueKeyOwnershipProof::new)
+    }
+
+    fn submit_report_equivocation_unsigned_extrinsic(
+      equivocation_proof: babe_primitives::EquivocationProof<<Block as BlockT>::Header>,
+      key_owner_proof: babe_primitives::OpaqueKeyOwnershipProof,
+    ) -> Option<()> {
+      let key_owner_proof = key_owner_proof.decode()?;
+
+      Babe::submit_unsigned_equivocation_report(
+        equivocation_proof,
+        key_owner_proof,
+      )
     }
   }
 
@@ -1662,12 +1784,6 @@ impl_runtime_apis! {
 
     fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
       TransactionPayment::query_fee_details(uxt, len)
-    }
-  }
-
-  impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
-    fn collect_collation_info(header: &<Block as BlockT>::Header) -> cumulus_primitives_core::CollationInfo {
-      ParachainSystem::collect_collation_info(header)
     }
   }
 
@@ -1871,32 +1987,3 @@ impl_runtime_apis! {
     }
   }
 }
-
-struct CheckInherents;
-
-impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
-  fn check_inherents(
-    block: &Block,
-    relay_state_proof: &cumulus_pallet_parachain_system::RelayChainStateProof,
-  ) -> sp_inherents::CheckInherentsResult {
-    let relay_chain_slot = relay_state_proof
-      .read_slot()
-      .expect("Could not read the relay chain slot from the proof");
-
-    let inherent_data =
-      cumulus_primitives_timestamp::InherentDataProvider::from_relay_chain_slot_and_duration(
-        relay_chain_slot,
-        sp_std::time::Duration::from_secs(6),
-      )
-      .create_inherent_data()
-      .expect("Could not create the timestamp inherent data");
-
-    inherent_data.check_extrinsics(&block)
-  }
-}
-
-cumulus_pallet_parachain_system::register_validate_block!(
-  Runtime = Runtime,
-  BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
-  CheckInherents = CheckInherents,
-);

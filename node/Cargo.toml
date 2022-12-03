@@ -1,5 +1,5 @@
 [package]
-name = 'clover'
+name = 'glitch-node'
 authors = ['Clover Network <https://github.com/clover-network>']
 build = 'build.rs'
 description = 'Clover node'
@@ -13,7 +13,7 @@ version = '0.1.23'
 targets = ['x86_64-unknown-linux-gnu']
 
 [[bin]]
-name = 'clover'
+name = 'glitch-node'
 
 [dependencies]
 primitives = { package = 'clover-primitives', path = '../primitives', version = '0.9.0'}
@@ -66,6 +66,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 sp-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 sp-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"  }
+sp-transaction-storage-proof = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"  }
 sp-trie = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"   }
 hex-literal = { version = '0.3.1' }
@@ -81,6 +82,11 @@ fc-db = { git = "https://github.com/clover-network/frontier.git", branch = "pang
 fc-rpc-core = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26" }
 fc-mapping-sync = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26" }
 primitive-types = { version = "0.11", default-features = false, features = ["rlp", "byteorder"] }
+sc-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 
 cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
 cumulus-client-collator = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
