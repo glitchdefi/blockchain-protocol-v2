@@ -632,7 +632,7 @@ fn glitch_genesis(
             })
             .collect(),
         },
-        base_fee: Default::default(),
+        //base_fee: Default::default(),
         sudo: SudoConfig {
             // Assign network admin rights.
             key: Some(root_key),

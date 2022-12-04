@@ -356,8 +356,18 @@ parameter_types! {
     pub BlockGasLimit: U256 = U256::from(u32::max_value());
 }
 
+pub struct FixedGasPrice;
+
+impl FeeCalculator for FixedGasPrice {
+    fn min_gas_price() -> U256 {
+        let fixed_price: u64 = 10_000_000_000;
+        fixed_price.into()
+    }
+}
+
 impl pallet_evm::Config for Runtime {
-  type FeeCalculator = BaseFee;
+  //type FeeCalculator = BaseFee;
+  type FeeCalculator = FixedGasPrice;
   type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
   type GasWeightMapping = GlitchGasWeightMapping;
   type CallOrigin = EnsureAddressRoot<AccountId>;
@@ -1170,7 +1180,7 @@ parameter_types! {
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
-  pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
+  pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
   pub const Period: u32 = 6 * HOURS;
   pub const Offset: u32 = 0;
   pub const MaxAuthorities: u32 = 100_000;
@@ -1180,14 +1190,14 @@ impl pallet_session::Config for Runtime {
   type Event = Event;
   type ValidatorId = <Self as frame_system::Config>::AccountId;
   // we don't have stash and controller, thus we don't need the convert as well.
-  type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-  type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-  type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-  type SessionManager = CollatorSelection;
+  type ValidatorIdOf = pallet_staking::StashOf<Self>;
+  type ShouldEndSession = Babe;
+  type NextSessionRotation = Babe;
+  type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
   // Essentially just Aura, but lets be pedantic.
   type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
   type Keys = SessionKeys;
-  // type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+  //type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
   type WeightInfo = ();
 }
 
@@ -1221,11 +1231,11 @@ impl pallet_base_fee::BaseFeeThreshold for BaseFeeThreshold {
   }
 }
 
-impl pallet_base_fee::Config for Runtime {
-  type Event = Event;
-  type Threshold = BaseFeeThreshold;
-  type IsActive = IsActive;
-}
+//impl pallet_base_fee::Config for Runtime {
+//  type Event = Event;
+//  type Threshold = BaseFeeThreshold;
+//  type IsActive = IsActive;
+//}
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
@@ -1392,72 +1402,74 @@ construct_runtime!(
     NodeBlock = opaque::Block,
     UncheckedExtrinsic = UncheckedExtrinsic
   {
-    System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
-    RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 1,
-    Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
+    //Core
+    System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+    RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
+    Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+    Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 
-    Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
-    Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 4,
+		//Auth
+    ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+    AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config},
+    Offences: pallet_offences::{Pallet, Storage, Event},
 
-    Offences: pallet_offences::{Pallet, Storage, Event} = 5,
-    TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 6,
+		//Account lookup
+    Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>},
 
-    ParachainInfo: parachain_info::{Pallet, Storage, Config} = 7,
+		//Native token
+    Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+    TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
 
-    // Collator support. the order of these 4 are important and shall not change.
-    Authorship: pallet_authorship::{Pallet, Call, Storage} = 8,
-    CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 9,
-    // Babe must be before session.
-    Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 10,
-    Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 11,
-    Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned} = 12,
-    ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 13,
-    AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config} = 14,
-    
-    // Governance.
-    Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 15,
-    Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 16,
-    TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 17,
-    ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 18,
-    TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 19,
-    Treasury: pallet_treasury::{Pallet, Call, Storage, Event<T>, Config} = 20,
+		//Consensus the order of these 4 are important and shall not change.
+    Authorship: pallet_authorship::{Pallet, Call, Storage},
+    CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>},
+    //Babe must be before session.
+    Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned},
+    Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned},
+    Staking: pallet_staking::{Pallet, Call, Storage, Config<T>, Event<T>},
+    ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+    VoterList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
 
-    // Smart contracts modules
-    Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 21,
-    EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>} = 22,
-    Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin, Config, } = 23,
+    Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
+    Historical: session_historical::{Pallet},
 
-    Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 24,
+		//Smart contracts
+    Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>},
+    Ethereum: pallet_ethereum::{Pallet, Call, Storage, Event, Origin, Config, },
+    EVM: pallet_evm::{Pallet, Config, Call, Storage, Event<T>},
+    //EVMChainId
+    //DynamicFee
+    //BaseFee: pallet_base_fee::{Pallet, Call, Storage, Config<T>, Event},
 
-    // Utility module.
-    Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 25,
-    Utility: pallet_utility::{Pallet, Call, Event} = 26,
+		//Governance
+    Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
+    TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
+    Treasury: pallet_treasury::{Pallet, Call, Storage, Event<T>, Config},
+    Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>},
+    Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>},
+    ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>},
+    TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>},
+    Tips: pallet_tips::{Pallet, Call, Storage, Event<T>},
 
-    Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 27,
-    Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 28,
+		//Account module
+    EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>},
 
-    Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 29,
+		//Utility
+    Utility: pallet_utility::{Pallet, Call, Event},
+    Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
+    Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 
-    Bounties: pallet_bounties::{Pallet, Call, Storage, Event<T>} = 30,
-    Tips: pallet_tips::{Pallet, Call, Storage, Event<T>} = 31,
+    ParachainInfo: parachain_info::{Pallet, Storage, Config},
 
-    // account module
-    EvmAccounts: evm_accounts::{Pallet, Call, Storage, Event<T>} = 32,
+    Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
+    Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
 
-    BaseFee: pallet_base_fee::{Pallet, Call, Storage, Config<T>, Event} = 34,
-
-    AssetConfig: asset_config::{Pallet, Call, Storage, Event<T>} = 40,
-    
-    Staking: pallet_staking::{Pallet, Call, Storage, Config<T>, Event<T>} = 52,
+    AssetConfig: asset_config::{Pallet, Call, Storage, Event<T>},
     
     // TODO:
-    // Revenue: pallet_revenue::{Module, Call, Storage, Config<T>, Event<T>}  = 53,
-    // Fund: pallet_fund::{Module, Call, Storage, Event<T>, Config} = 54,
-    // RevenueFund: pallet_revenue_fund::{Module, Call, Storage, Event<T>, Config} = 55,
-    
-    ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 56,
-    VoterList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 57,
-    Historical: session_historical::{Pallet} = 58,
+    // Revenue: pallet_revenue::{Module, Call, Storage, Config<T>, Event<T>} ,
+    // Fund: pallet_fund::{Module, Call, Storage, Event<T>, Config},
+    // RevenueFund: pallet_revenue_fund::{Module, Call, Storage, Event<T>, Config},
   }
 );
 
@@ -1548,7 +1560,7 @@ impl fp_self_contained::SelfContainedCall for Call {
 pub const BABE_GENESIS_EPOCH_CONFIG: babe_primitives::BabeEpochConfiguration =
   babe_primitives::BabeEpochConfiguration {
     c: PRIMARY_PROBABILITY,
-    allowed_slots: babe_primitives::AllowedSlots::PrimaryAndSecondaryVRFSlots,
+    allowed_slots: babe_primitives::AllowedSlots::PrimaryAndSecondaryPlainSlots,
   };
 
 impl_runtime_apis! {
@@ -1914,7 +1926,8 @@ impl_runtime_apis! {
     }
 
     fn elasticity() -> Option<Permill> {
-      Some(BaseFee::elasticity())
+      //Some(BaseFee::elasticity())
+      None
     }
   }
 

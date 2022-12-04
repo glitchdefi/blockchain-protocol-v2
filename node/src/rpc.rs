@@ -15,6 +15,7 @@ use fc_rpc_core::types::{FeeHistoryCache, FeeHistoryCacheLimit, FilterPool};
 use jsonrpsee::RpcModule;
 use pallet_ethereum::EthereumStorageSchema;
 use primitives::{AccountId, Balance, Block, BlockNumber, Hash, Index};
+use sc_consensus_babe::{Config, Epoch};
 use sc_client_api::backend::{AuxStore, Backend, StateBackend, StorageProvider};
 use sc_network::NetworkService;
 pub use sc_rpc::SubscriptionTaskExecutor;
@@ -26,19 +27,50 @@ use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_runtime::traits::BlakeTwo256;
 use std::collections::BTreeMap;
+use sp_consensus_babe::BabeApi;
+
+/// Extra dependencies for BABE.
+pub struct BabeDeps {
+  /// BABE protocol config.
+  pub babe_config: Config,
+  /// BABE pending epoch changes.
+  pub shared_epoch_changes: sc_consensus_epochs::SharedEpochChanges<Block, Epoch>,
+  /// The keystore that manages the keys of the node.
+  pub keystore: sp_keystore::SyncCryptoStorePtr,
+}
+
+/// Extra dependencies for GRANDPA
+pub struct GrandpaDeps<B> {
+  /// Voting round info.
+  pub shared_voter_state: sc_finality_grandpa::SharedVoterState,
+  /// Authority set info.
+  pub shared_authority_set: sc_finality_grandpa::SharedAuthoritySet<Hash, BlockNumber>,
+  /// Receives notifications about justification events from Grandpa.
+  pub justification_stream: sc_finality_grandpa::GrandpaJustificationStream<Block>,
+  /// Subscription manager to keep track of pubsub subscribers.
+  pub subscription_executor: SubscriptionTaskExecutor,
+  /// Finality proof provider.
+  pub finality_provider: Arc<sc_finality_grandpa::FinalityProofProvider<B, Block>>,
+}
 
 /// Full client dependencies.
-pub struct FullDeps<C, P, A: ChainApi> {
+pub struct FullDeps<C, P, A: ChainApi, SC, B> {
   /// The client instance to use.
   pub client: Arc<C>,
   /// Transaction pool instance.
   pub pool: Arc<P>,
+  /// The SelectChain Strategy
+  pub select_chain: SC,
   /// Graph pool instance.
   pub graph: Arc<Pool<A>>,
   // pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
   /// Whether to deny unsafe calls
   pub deny_unsafe: DenyUnsafe,
   /// Ethereum pending transactions.
+  /// BABE specific dependencies.
+  pub babe: BabeDeps,
+  /// GRANDPA specific dependencies.
+  pub grandpa: GrandpaDeps<B>,
   // pub pending_transactions: PendingTransactions,
   /// EthFilterApi pool.
   pub filter_pool: Option<FilterPool>,
@@ -138,14 +170,20 @@ where
 }
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, B, A>(
-  deps: FullDeps<C, P, A>,
+pub fn create_full<C, P, B, A, SC>(
+  deps: FullDeps<C, P, A, SC, B>,
   subscription_task_executor: SubscriptionTaskExecutor,
 ) -> Result<RpcModule<()>, Box<dyn std::error::Error + Send + Sync>>
 where
   C: ProvideRuntimeApi<Block>
     + sc_client_api::backend::StorageProvider<Block, B>
-    + sc_client_api::AuxStore,
+    + sc_client_api::BlockBackend<Block>
+    + HeaderBackend<Block>
+    + AuxStore
+    + HeaderMetadata<Block, Error = BlockChainError>
+    + Sync
+    + Send
+    + 'static,
   C: sc_client_api::client::BlockchainEvents<Block>,
   C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError> + 'static,
   C: Send + Sync + 'static,
@@ -155,10 +193,14 @@ where
   C::Api: fp_rpc::ConvertTransactionRuntimeApi<Block>,
   C::Api: fp_rpc::EthereumRuntimeRPCApi<Block>,
   C::Api: BlockBuilder<Block>,
+  C::Api: BabeApi<Block>,
   P: TransactionPool<Block = Block> + 'static,
   B: Backend<Block> + 'static,
   B::State: StateBackend<BlakeTwo256>,
   A: ChainApi<Block = Block> + 'static,
+  SC: sp_consensus::SelectChain<Block> + 'static,
+  B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+  B::State: sc_client_api::backend::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
   use fc_rpc::{
     Eth, EthApiServer, EthDevSigner, EthFilter, EthFilterApiServer, EthPubSub, EthPubSubApiServer,
@@ -167,15 +209,19 @@ where
   use pallet_contracts_rpc::{Contracts, ContractsApiServer};
   use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
   use substrate_frame_rpc_system::{System, SystemApiServer};
+  use sc_consensus_babe_rpc::{Babe, BabeApiServer};
 
   let mut io = RpcModule::new(());
 
   let FullDeps {
     client,
     pool,
+    select_chain,
     graph,
     // chain_spec: _,
     deny_unsafe,
+    babe,
+    grandpa,
     network,
     // pending_transactions,
     filter_pool,
@@ -190,9 +236,30 @@ where
     rpc_config,
   } = deps;
 
+  let BabeDeps {
+    keystore,
+    babe_config,
+    shared_epoch_changes,
+  } = babe;
+  let GrandpaDeps {
+    shared_voter_state,
+    shared_authority_set,
+    justification_stream,
+    subscription_executor,
+    finality_provider,
+  } = grandpa;
+
   io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
   io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
   io.merge(Contracts::new(client.clone()).into_rpc())?;
+  io.merge(Babe::new(
+    client.clone(),
+    shared_epoch_changes.clone(),
+    keystore,
+    babe_config,
+    select_chain,
+    deny_unsafe,
+  ).into_rpc());
 
   //   io.extend_with(
   // 		sc_sync_state_rpc::SyncStateRpcApi::to_delegate(

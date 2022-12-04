@@ -282,10 +282,26 @@ pub fn new_partial(
     telemetry.as_ref().map(|x| x.handle()),
   )?;
 
+
   let rpc_extensions_builder = {
+    let justification_stream = grandpa_link.justification_stream();
+    let shared_authority_set = grandpa_link.shared_authority_set().clone();
+    let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
+    let rpc_setup = shared_voter_state.clone();
+
+    let finality_proof_provider = sc_finality_grandpa::FinalityProofProvider::new_for_service(
+      backend.clone(),
+      Some(shared_authority_set.clone()),
+    );
+
+    let babe_config = babe_link.config().clone();
+    let shared_epoch_changes = babe_link.epoch_changes().clone();
+
     let client = client.clone();
     let pool = transaction_pool.clone();
+    let select_chain = select_chain.clone();
     // let chain_spec = config.chain_spec.cloned_box();
+    let keystore = keystore_container.sync_keystore();
     let is_authority = config.role.is_authority();
     // let subscription_task_executor =
     // sc_rpc::SubscriptionTaskExecutor::new(task_manager.spawn_handle());
@@ -324,9 +340,22 @@ pub fn new_partial(
         let deps = crate::rpc::FullDeps {
           client: client.clone(),
           pool: pool.clone(),
+          select_chain: select_chain.clone(),
           graph: pool.pool().clone(),
           // chain_spec: chain_spec.cloned_box(),
           deny_unsafe,
+          babe: crate::rpc::BabeDeps {
+            babe_config: babe_config.clone(),
+            shared_epoch_changes: shared_epoch_changes.clone(),
+            keystore: keystore.clone(),
+          },
+          grandpa: crate::rpc::GrandpaDeps {
+            shared_voter_state: shared_voter_state.clone(),
+            shared_authority_set: shared_authority_set.clone(),
+            justification_stream: justification_stream.clone(),
+            subscription_executor: subscription_task_executor.clone(),
+            finality_provider: finality_proof_provider.clone(),
+          },
           // pending_transactions: pending.clone(),
           filter_pool: filter_pool_clone.clone(),
           backend: frontier_backend_clone.clone(),
