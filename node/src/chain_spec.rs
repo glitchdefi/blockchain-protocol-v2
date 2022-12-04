@@ -644,8 +644,8 @@ fn glitch_genesis(
                 .iter()
                 .map(|x| (x.0.clone(), x.0.clone(), STASH, StakerStatus::Validator))
                 .collect(),
-            invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
-            force_era: Forcing::ForceNone,
+            invulnerables: vec![],
+            force_era: Forcing::NotForcing,
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
         },

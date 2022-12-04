@@ -259,7 +259,7 @@ where
     babe_config,
     select_chain,
     deny_unsafe,
-  ).into_rpc());
+  ).into_rpc())?;
 
   //   io.extend_with(
   // 		sc_sync_state_rpc::SyncStateRpcApi::to_delegate(
