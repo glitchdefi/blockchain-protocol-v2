@@ -3327,6 +3327,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-executor",
  "sc-finality-grandpa",
+ "sc-finality-grandpa-rpc",
  "sc-keystore",
  "sc-network",
  "sc-rpc",

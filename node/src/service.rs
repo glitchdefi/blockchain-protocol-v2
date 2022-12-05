@@ -300,7 +300,7 @@ pub fn new_partial(
     let client = client.clone();
     let pool = transaction_pool.clone();
     let select_chain = select_chain.clone();
-    // let chain_spec = config.chain_spec.cloned_box();
+    let chain_spec = config.chain_spec.cloned_box();
     let keystore = keystore_container.sync_keystore();
     let is_authority = config.role.is_authority();
     // let subscription_task_executor =
@@ -342,7 +342,7 @@ pub fn new_partial(
           pool: pool.clone(),
           select_chain: select_chain.clone(),
           graph: pool.pool().clone(),
-          // chain_spec: chain_spec.cloned_box(),
+          chain_spec: chain_spec.cloned_box(),
           deny_unsafe,
           babe: crate::rpc::BabeDeps {
             babe_config: babe_config.clone(),

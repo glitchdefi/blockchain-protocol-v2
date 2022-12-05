@@ -63,7 +63,7 @@ pub struct FullDeps<C, P, A: ChainApi, SC, B> {
   pub select_chain: SC,
   /// Graph pool instance.
   pub graph: Arc<Pool<A>>,
-  // pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
+  pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
   /// Whether to deny unsafe calls
   pub deny_unsafe: DenyUnsafe,
   /// Ethereum pending transactions.
@@ -210,6 +210,8 @@ where
   use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
   use substrate_frame_rpc_system::{System, SystemApiServer};
   use sc_consensus_babe_rpc::{Babe, BabeApiServer};
+  use sc_finality_grandpa_rpc::{Grandpa, GrandpaApiServer};
+  use sc_sync_state_rpc::{SyncState, SyncStateApiServer};
 
   let mut io = RpcModule::new(());
 
@@ -218,7 +220,7 @@ where
     pool,
     select_chain,
     graph,
-    // chain_spec: _,
+    chain_spec,
     deny_unsafe,
     babe,
     grandpa,
@@ -260,18 +262,20 @@ where
     select_chain,
     deny_unsafe,
   ).into_rpc())?;
+  io.merge(Grandpa::new(
+    subscription_executor,
+    shared_authority_set.clone(),
+    shared_voter_state,
+    justification_stream,
+    finality_provider,
+  ).into_rpc())?;
 
-  //   io.extend_with(
-  // 		sc_sync_state_rpc::SyncStateRpcApi::to_delegate(
-  // 			sc_sync_state_rpc::SyncStateRpcHandler::new(
-  // 				chain_spec,
-  // 				client.clone(),
-  // 				shared_authority_set,
-  // 				shared_epoch_changes,
-  // 				deny_unsafe,
-  // 			)
-  // 		)
-  // 	);
+  /*io.merge(SyncState::new(
+    chain_spec,
+    client.clone(),
+    shared_authority_set,
+    shared_epoch_changes,
+  )?.into_rpc())?;*/
 
   let mut signers = Vec::new();
   signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);

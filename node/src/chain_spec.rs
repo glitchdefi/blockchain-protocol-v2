@@ -589,19 +589,15 @@ fn glitch_genesis(
                 )
                 .collect(),
         },
-        // pallet_contracts: ContractsConfig {
-        //   current_schedule: pallet_contracts::Schedule::default()
-        //   .enable_println(enable_println),
-        // },
+        /*contracts: ContractsConfig {
+          current_schedule: pallet_contracts::Schedule::default()
+          .enable_println(enable_println),
+        },*/
         evm: EVMConfig {
           accounts: endowed_eth_accounts,
         },
         ethereum: EthereumConfig {},
         indices: IndicesConfig { indices: vec![] },
-        //sudo: SudoConfig {
-        //  // Assign network admin rights.
-        //  key: Some(root_key),
-        //},
         parachain_info: glitch_runtime::ParachainInfoConfig { parachain_id: id },
         collator_selection: glitch_runtime::CollatorSelectionConfig {
           invulnerables: initial_authorities
@@ -650,10 +646,12 @@ fn glitch_genesis(
             ..Default::default()
         },
         babe: glitch_runtime::BabeConfig {
-			authorities: vec![],
-			epoch_config: Some(glitch_runtime::BABE_GENESIS_EPOCH_CONFIG),
-		},
-        grandpa: Default::default(),
+          authorities: vec![],
+          epoch_config: Some(glitch_runtime::BABE_GENESIS_EPOCH_CONFIG),
+        },
+        grandpa: glitch_runtime::GrandpaConfig{
+          authorities: vec![],
+        },
         im_online: Default::default(),
         authority_discovery: glitch_runtime::AuthorityDiscoveryConfig { keys: vec![] },
     }
