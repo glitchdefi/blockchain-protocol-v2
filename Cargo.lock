@@ -3330,6 +3330,7 @@ dependencies = [
  "sc-finality-grandpa-rpc",
  "sc-keystore",
  "sc-network",
+ "sc-network-common",
  "sc-rpc",
  "sc-rpc-api",
  "sc-service",

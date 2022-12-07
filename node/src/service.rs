@@ -21,6 +21,7 @@ use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
 use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
 use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
+use sc_network::{Event, NetworkService};
 
 use glitch_runtime::{self, opaque::Block, RuntimeApi};
 use fc_rpc::{CacheTask, DebugTask, OverrideHandle};
@@ -165,6 +166,7 @@ pub fn new_partial(
       FullBabeBlockImport, 
       sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
       sc_consensus_babe::BabeLink<Block>,
+      sc_finality_grandpa::SharedVoterState,
     ),
   >,
   ServiceError,
@@ -283,11 +285,11 @@ pub fn new_partial(
   )?;
 
 
+  let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
   let rpc_extensions_builder = {
     let justification_stream = grandpa_link.justification_stream();
     let shared_authority_set = grandpa_link.shared_authority_set().clone();
-    let shared_voter_state = sc_finality_grandpa::SharedVoterState::empty();
-    let rpc_setup = shared_voter_state.clone();
+    let shared_voter_state = shared_voter_state.clone();
 
     let finality_proof_provider = sc_finality_grandpa::FinalityProofProvider::new_for_service(
       backend.clone(),
@@ -395,6 +397,7 @@ pub fn new_partial(
       block_import,
       grandpa_link,
       babe_link,
+      shared_voter_state,
     ),
   })
 }
@@ -402,7 +405,7 @@ pub fn new_partial(
 /// Builds a new service for a full client.
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl(
-  parachain_config: Configuration,
+  mut parachain_config: Configuration,
   polkadot_config: Configuration,
   collator_options: CollatorOptions,
   id: ParaId,
@@ -435,18 +438,20 @@ async fn start_node_impl(
         block_import,
         grandpa_link,
         babe_link,
+        shared_voter_state,
       ),
   } = new_partial(&parachain_config, cli)?;
 
+  let auth_disc_publish_non_global_ips = parachain_config.network.allow_non_globals_in_dht;
   let grandpa_protocol_name = sc_finality_grandpa::protocol_standard_name(
     &client.block_hash(0).ok().flatten().expect("Genesis block exists; qed"),
     &parachain_config.chain_spec,
   );
 
-  //parachain_config
-  //  .network
-  //  .extra_sets
-  //  .push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
+  parachain_config
+    .network
+    .extra_sets
+    .push(sc_finality_grandpa::grandpa_peers_set_config(grandpa_protocol_name.clone()));
   let warp_sync = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
     backend.clone(),
     grandpa_link.shared_authority_set().clone(),
@@ -548,7 +553,7 @@ async fn start_node_impl(
   let backoff_authoring_blocks =
     Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
 
-  if role.is_authority() {
+	if let sc_service::config::Role::Authority { .. } = &role {
     let proposer = sc_basic_authorship::ProposerFactory::new(
       task_manager.spawn_handle(),
       client.clone(),
@@ -597,7 +602,7 @@ async fn start_node_impl(
       backoff_authoring_blocks,
       babe_link,
       can_author_with,
-      block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(2f32 / 3f32),
+      block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(0.5),
       justification_sync_link: network.clone(),
       max_block_proposal_slot_portion: None,
       telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -608,6 +613,36 @@ async fn start_node_impl(
     task_manager
       .spawn_essential_handle()
       .spawn_blocking("babe-proposer", Some("block-authoring"), babe);
+  }
+
+  if role.is_authority() {
+    let authority_discovery_role =
+      sc_authority_discovery::Role::PublishAndDiscover(keystore_container.keystore());
+		let dht_event_stream =
+			network.event_stream("authority-discovery").filter_map(|e| async move {
+				match e {
+					Event::Dht(e) => Some(e),
+					_ => None,
+				}
+			});
+		let (authority_discovery_worker, _service) =
+			sc_authority_discovery::new_worker_and_service_with_config(
+				sc_authority_discovery::WorkerConfig {
+					publish_non_global_ips: auth_disc_publish_non_global_ips,
+					..Default::default()
+				},
+				client.clone(),
+				network.clone(),
+				Box::pin(dht_event_stream),
+				authority_discovery_role,
+				prometheus_registry.clone(),
+			);
+
+		task_manager.spawn_handle().spawn(
+			"authority-discovery-worker",
+			Some("networking"),
+			authority_discovery_worker.run(),
+		);
   }
 
   if grandpa_enabled {
@@ -640,7 +675,7 @@ async fn start_node_impl(
       network,
       voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
       prometheus_registry,
-      shared_voter_state: sc_finality_grandpa::SharedVoterState::empty(),
+      shared_voter_state,
       telemetry: telemetry.as_ref().map(|x| x.handle()),
     };
 

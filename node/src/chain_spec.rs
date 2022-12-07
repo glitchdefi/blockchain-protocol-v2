@@ -31,7 +31,7 @@ use pallet_staking::Forcing;
 // const TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
 
 const DEFAULT_PROPERTIES_TESTNET: &str = r#"
 {
@@ -71,13 +71,15 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 /// The extensions for the [`ChainSpec`].
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecExtension)]
 #[serde(deny_unknown_fields)]
 pub struct Extensions {
     /// The relay chain of the Parachain.
     pub relay_chain: String,
     /// The id of the Parachain.
     pub para_id: u32,
+    /// The light sync state extension used by the sync-state rpc.
+    pub light_sync_state: sc_sync_state_rpc::LightSyncStateExtension,
 }
 
 impl Extensions {
@@ -182,7 +184,7 @@ pub fn development_config(id: ParaId) -> Result<ChainSpec, String> {
         // Properties
         Some(json::from_str(DEFAULT_PROPERTIES_TESTNET).unwrap()),
         // Extensions
-        None,
+        Default::default(),
     ))
 }
 
@@ -235,7 +237,7 @@ pub fn local_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
         // Properties
         Some(json::from_str(DEFAULT_PROPERTIES_TESTNET).unwrap()),
         // Extensions
-        None,
+        Default::default(),
     ))
 }
 
@@ -247,7 +249,7 @@ pub fn glitch_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
       "Glitch",
       //ID
       "glitch_testnet",
-      ChainType::Custom(String::from("glitch_testnet")),
+      ChainType::Local,
       move || glitch_genesis(
           wasm_binary,
           // Initial PoA authories
@@ -339,7 +341,7 @@ pub fn glitch_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
       // Properties
       Some(json::from_str(DEFAULT_PROPERTIES_TESTNET).unwrap()),
       // Extension
-      None,
+      Default::default(),
   ))
 }
 
@@ -351,7 +353,7 @@ pub fn glitch_mainnet_config(id: ParaId) -> Result<ChainSpec, String> {
       "Glitch",
       //ID
       "glitch_mainnet",
-      ChainType::Custom(String::from("glitch_mainnet")),
+      ChainType::Live,
       move || glitch_genesis(
           wasm_binary,
           // Initial PoA authories
@@ -442,7 +444,7 @@ pub fn glitch_mainnet_config(id: ParaId) -> Result<ChainSpec, String> {
       // Properties
       Some(json::from_str(DEFAULT_PROPERTIES_MAINNET).unwrap()),
       // Extension
-      None,
+      Default::default(),
   ))
 }
 
@@ -454,7 +456,7 @@ pub fn glitch_uat_config(id: ParaId) -> Result<ChainSpec, String> {
       "Glitch UAT",
       //ID
       "glitch_uat",
-      ChainType::Custom(String::from("glitch_uat")),
+      ChainType::Live,
       move || glitch_genesis(
           wasm_binary,
           // Initial PoA authories
@@ -524,7 +526,7 @@ pub fn glitch_uat_config(id: ParaId) -> Result<ChainSpec, String> {
       // Properties
       Some(json::from_str(DEFAULT_PROPERTIES_MAINNET).unwrap()),
       // Extension
-      None,
+      Default::default(),
   ))
 }
 

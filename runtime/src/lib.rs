@@ -22,7 +22,7 @@ use sp_runtime::{
   ApplyExtrinsicResult, FixedPointNumber, OpaqueExtrinsic, Percent, Perquintill,
 };
 use frame_election_provider_support::{
-  onchain, generate_solution_type, SequentialPhragmen,
+  onchain, generate_solution_type, SequentialPhragmen, BalancingConfig,
 };
 use sp_std::{marker::PhantomData, prelude::*};
 
@@ -49,6 +49,7 @@ use evm_accounts::EvmAddressMapping;
 use fp_rpc::TransactionStatus;
 pub use frame_support::{
   construct_runtime, debug, ensure, log, parameter_types,
+	pallet_prelude::Get,
   traits::{
     ConstU128, ConstU16, ConstU32, Currency, EitherOfDiverse, EqualPrivilegeOnly, Everything,
     FindAuthor, Imbalance, KeyOwnerProofSystem, LockIdentifier, Nothing, OnUnbalanced, Randomness,
@@ -152,15 +153,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
   transaction_version: 1,
   state_version: 0,
 };
-
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
-
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
-
-// Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -494,7 +486,7 @@ generate_solution_type!(
 
 parameter_types! {
   // Six sessions in an era (24 hours).
-  pub const SessionsPerEra: sp_staking::SessionIndex = prod_or_fast!(6, 1);
+  pub const SessionsPerEra: sp_staking::SessionIndex = 6;
   // 28 eras for unbonding (28 days).
   pub const BondingDuration: sp_staking::EraIndex = 28;
   pub const SlashDeferDuration: sp_staking::EraIndex = 27;
@@ -528,26 +520,19 @@ impl onchain::Config for OnChainSeqPhragmen {
   type WeightInfo = weights::frame_election_provider_support::WeightInfo<Runtime>;
 }
 
+impl onchain::BoundedConfig for OnChainSeqPhragmen {
+	type VotersBound = MaxElectingVoters;
+	type TargetsBound = ConstU32<2_000>;
+}
+
 parameter_types!{
   pub OffchainSolutionLengthLimit: u32 = Perbill::from_rational(90_u32, 100) *
     *BlockLength::get()
     .max
     .get(DispatchClass::Normal);
-  pub EpochDuration: u64 = prod_or_fast!(
-    EPOCH_DURATION_IN_SLOTS as u64,
-    2 * MINUTES as u64,
-    "DOT_EPOCH_DURATION"
-  );
-  pub SignedPhase: u32 = prod_or_fast!(
-    (EPOCH_DURATION_IN_SLOTS / 4).saturated_into::<u32>(),
-    (1 * MINUTES).min(EpochDuration::get().saturated_into::<u32>() / 2),
-    "DOT_SIGNED_PHASE"
-  );
-  pub UnsignedPhase: u32 = prod_or_fast!(
-    (EPOCH_DURATION_IN_SLOTS / 4).saturated_into::<u32>(),
-    (1 * MINUTES).min(EpochDuration::get().saturated_into::<u32>() / 2),
-    "DOT_UNSIGNED_PHASE"
-  );
+  pub EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS as u64;
+  pub SignedPhase: u32 = (EPOCH_DURATION_IN_SLOTS / 4).saturated_into::<u32>();
+  pub UnsignedPhase: u32 = (EPOCH_DURATION_IN_SLOTS / 4).saturated_into::<u32>();
   pub const SignedMaxSubmissions: u32 = 16;
   pub const SignedMaxRefunds: u32 = 16 / 4;
   pub SignedRewardBase: Balance = 1_000_000_000_000;
@@ -581,6 +566,31 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
   }
 }
 
+/// Maximum number of iterations for balancing that will be executed in the embedded OCW
+/// miner of election provider multi phase.
+pub const MINER_MAX_ITERATIONS: u32 = 10;
+
+/// A source of random balance for NposSolver, which is meant to be run by the OCW election miner.
+pub struct OffchainRandomBalancing;
+impl Get<Option<BalancingConfig>> for OffchainRandomBalancing {
+	fn get() -> Option<BalancingConfig> {
+		use sp_runtime::traits::TrailingZeroInput;
+		let iterations = match MINER_MAX_ITERATIONS {
+			0 => 0,
+			max => {
+				let seed = sp_io::offchain::random_seed();
+				let random = <u32>::decode(&mut TrailingZeroInput::new(&seed))
+					.expect("input is padded with zeroes; qed") %
+					max.saturating_add(1);
+				random as usize
+			},
+		};
+
+		let config = BalancingConfig { iterations, tolerance: 0 };
+		Some(config)
+	}
+}
+
 impl pallet_election_provider_multi_phase::Config for Runtime {
   type Event = Event;
   type Currency = Balances;
@@ -603,18 +613,15 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
   type OffchainRepeat = OffchainRepeat;
   type MinerTxPriority = NposSolutionPriority;
   type DataProvider = Staking;
-  type Fallback = pallet_election_provider_multi_phase::NoFallback<Self>;
+  type Fallback = onchain::BoundedExecution<OnChainSeqPhragmen>;
   type GovernanceFallback = onchain::UnboundedExecution<OnChainSeqPhragmen>;
   type Solver = SequentialPhragmen<
     AccountId,
     pallet_election_provider_multi_phase::SolutionAccuracyOf<Self>,
-    (),
+    OffchainRandomBalancing,
   >;
   type BenchmarkingConfig = polkadot_runtime_common::elections::BenchmarkConfig;
-  type ForceOrigin = EitherOfDiverse<
-    EnsureRoot<AccountId>,
-    pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
-  >;
+  type ForceOrigin = EnsureRootOrHalfCouncil;
   type WeightInfo = weights::pallet_election_provider_multi_phase::WeightInfo<Self>;
   type MaxElectingVoters = MaxElectingVoters;
   type MaxElectableTargets = MaxElectableTargets;
@@ -1243,7 +1250,6 @@ parameter_types! {
   pub const PotId: PalletId = PalletId(*b"PotStake");
   pub const MaxCandidates: u32 = 1000;
   pub const MinCandidates: u32 = 2;
-  pub const SessionLength: BlockNumber = 6 * HOURS;
   pub const MaxInvulnerables: u32 = 100;
 }
 
@@ -1709,6 +1715,12 @@ impl_runtime_apis! {
       )
     }
   }
+
+	impl sp_authority_discovery::AuthorityDiscoveryApi<Block> for Runtime {
+		fn authorities() -> Vec<AuthorityDiscoveryId> {
+			AuthorityDiscovery::authorities()
+		}
+	}
 
   impl sp_session::SessionKeys<Block> for Runtime {
     fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {

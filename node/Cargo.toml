@@ -88,6 +88,7 @@ sp-finality-grandpa = { git = "https://github.com/paritytech/substrate", branch 
 sc-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sc-finality-grandpa-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
+sc-network-common = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.26" }
 
 cumulus-client-cli = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }

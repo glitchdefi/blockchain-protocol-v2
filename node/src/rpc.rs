@@ -270,12 +270,12 @@ where
     finality_provider,
   ).into_rpc())?;
 
-  /*io.merge(SyncState::new(
+  io.merge(SyncState::new(
     chain_spec,
     client.clone(),
     shared_authority_set,
     shared_epoch_changes,
-  )?.into_rpc())?;*/
+  )?.into_rpc())?;
 
   let mut signers = Vec::new();
   signers.push(Box::new(EthDevSigner::new()) as Box<dyn EthSigner>);
