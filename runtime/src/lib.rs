@@ -409,6 +409,7 @@ impl pallet_ethereum::Config for Runtime {
   type Event = Event;
   // type FindAuthor = EthereumFindAuthor<PhantomMockAuthorship>;
   type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+  type RevenueSharing = RevenueSharing;
 }
 
 pub struct TransactionConverter;
@@ -1377,15 +1378,17 @@ impl pallet_offences::Config for Runtime {
 	type OnOffenceHandler = Staking;
 }
 
+/// Configure the pallet-template in pallets/template.
+impl pallet_revenue_sharing::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+}
+
 // TODO:
 // parameter_types! {
 //     pub const RevenueModuleId: ModuleId = ModuleId(*b"py/rvnsr");
 // }
 // 
-// /// Configure the pallet-template in pallets/template.
-// impl pallet_revenue::Config for Runtime {
-//     type Event = Event;
-// }
 // 
 // //Config pallet-fund
 // 
@@ -1472,10 +1475,7 @@ construct_runtime!(
 
     AssetConfig: asset_config::{Pallet, Call, Storage, Event<T>},
     
-    // TODO:
-    // Revenue: pallet_revenue::{Module, Call, Storage, Config<T>, Event<T>} ,
-    // Fund: pallet_fund::{Module, Call, Storage, Event<T>, Config},
-    // RevenueFund: pallet_revenue_fund::{Module, Call, Storage, Event<T>, Config},
+    RevenueSharing: pallet_revenue_sharing::{Pallet, Call, Storage, Config, Event<T>} ,
   }
 );
 

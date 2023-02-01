@@ -656,5 +656,6 @@ fn glitch_genesis(
         },
         im_online: Default::default(),
         authority_discovery: glitch_runtime::AuthorityDiscoveryConfig { keys: vec![] },
+        revenue_sharing: Default::default(),
     }
 }

@@ -1,0 +1,48 @@
+[package]
+description = 'Revenue sharing system.'
+name = 'pallet-revenue-sharing'
+version = '1.0.0'
+edition = "2021"
+
+[dependencies]
+log = { version = "0.4" }
+serde = { default-features = false, version = "1.0.101" }
+codec = { package = "parity-scale-codec", default-features = false, version = "3" }
+rustc-hex = { default-features = false, version = "2.1.0" }
+primitive-types = { version = "0.11", features = ["byteorder", "rustc-hex"],  default-features = false}
+
+# substrate frame dependencies
+frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git",  branch = "polkadot-v0.9.26" }
+frame-system = {default-features = false, git = "https://github.com/paritytech/substrate.git",  branch = "polkadot-v0.9.26" }
+sp-runtime = {default-features = false, git = "https://github.com/paritytech/substrate.git",  branch = "polkadot-v0.9.26" }
+sp-core = { default-features = false, git = "https://github.com/paritytech/substrate.git",  branch = "polkadot-v0.9.26" }
+sp-std = {default-features = false, git = "https://github.com/paritytech/substrate.git",  branch = "polkadot-v0.9.26" }
+ethereum-types = { version = "0.13", default-features = false }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+sp-arithmetic = {default-features = false, git = "https://github.com/paritytech/substrate.git",  branch = "polkadot-v0.9.26" }
+
+getrandom = { version = "0.2.3", features = ["js"], default-features = false }
+
+# local dependency
+pallet-ethereum = { path = "../ethereum", default-features = false }
+
+[dev-dependencies]
+hex-literal = "0.3.1"
+
+[features]
+default = ['std']
+std = [
+    "serde/std",
+    "rustc-hex/std",
+    "codec/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "frame-support/std",
+    "frame-system/std",
+    "getrandom/std",
+    "pallet-ethereum/std",
+    "ethereum-types/std",
+    "pallet-ethereum/std",
+    "scale-info/std",
+]

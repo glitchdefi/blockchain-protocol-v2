@@ -33,7 +33,7 @@ tokio = "1.15"
 pallet-contracts = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" , default-features = false }
 pallet-contracts-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"  }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
-pallet-staking = {default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
+pallet-staking = {default-features = false, path = "../frame/staking" }
 sc-authority-discovery = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"  }
 sc-basic-authorship = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26"  }
 sc-cli = { features = ["wasmtime"], optional = true, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
