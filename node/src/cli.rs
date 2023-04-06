@@ -110,19 +110,19 @@ pub struct RunCmd {
 
 impl DefaultConfigurationValues for RunCmd {
   fn p2p_listen_port() -> u16 {
-    30334
+    30333
   }
 
   fn rpc_ws_listen_port() -> u16 {
-    9945
+    9944
   }
 
   fn rpc_http_listen_port() -> u16 {
-    9934
+    9933
   }
 
   fn prometheus_listen_port() -> u16 {
-    9616
+    9615
   }
 }
 
