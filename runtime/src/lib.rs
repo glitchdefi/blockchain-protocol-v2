@@ -373,7 +373,7 @@ impl pallet_evm::Config for Runtime {
   type ChainId = GlitchTestnetChainId;
   type FindAuthor = EthereumFindAuthor<Babe>;
   type BlockGasLimit = BlockGasLimit;
-  type OnChargeTransaction = ();
+  type OnChargeTransaction = pallet_evm::EVMCurrencyAdapter<Balances, FundBalance>;
   fn config() -> &'static evm::Config {
     &CLOVER_EVM_CONFIG
   }
@@ -409,6 +409,7 @@ impl pallet_ethereum::Config for Runtime {
   type Event = Event;
   // type FindAuthor = EthereumFindAuthor<PhantomMockAuthorship>;
   type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+  type RevenueSharing = Revenue;
 }
 
 pub struct TransactionConverter;
@@ -642,7 +643,7 @@ impl pallet_staking::Config for Runtime {
   type Event = Event;
   type Slash = Treasury;
   //TODO: Send (?) rewards to reward fund.
-  type Reward = (); // = Fund;
+  type Reward = Fund;
   type SessionsPerEra = SessionsPerEra;
   type BondingDuration = BondingDuration;
   type SlashDeferDuration = SlashDeferDuration;
@@ -661,7 +662,7 @@ impl pallet_staking::Config for Runtime {
   type OnStakerSlash = ();
   type WeightInfo = weights::pallet_staking::WeightInfo<Runtime>;
   //TODO:
-  //type RevenueFund = RevenueFund;
+  type RevenueFund = RevenueFund;
 }
 
 parameter_types! {
@@ -676,7 +677,7 @@ impl pallet_balances::Config for Runtime {
   /// The ubiquitous event type.
   type Event = Event;
   //TODO: Send dust to reward fund.
-  type DustRemoval = (); // = FundBalance;
+  type DustRemoval = FundBalance;
   type ExistentialDeposit = ExistentialDeposit;
   type AccountStore = System;
   type MaxLocks = MaxLocks;
@@ -685,16 +686,25 @@ impl pallet_balances::Config for Runtime {
   type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct FundBalance;
+impl OnUnbalanced<NegativeImbalance> for FundBalance {
+    fn on_nonzero_unbalanced(amount: NegativeImbalance) {
+        Balances::resolve_creating(&Fund::account_id(), amount);
+    }
+}
+
 pub struct DealWithFees;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-  fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
-    if let Some(mut fees) = fees_then_tips.next() {
-      if let Some(tips) = fees_then_tips.next() {
-        tips.merge_into(&mut fees);
-      }
-      Treasury::on_unbalanced(fees);
+    fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance>) {
+        if let Some(fees) = fees_then_tips.next() {
+            // Deposit all fees and tips to fund
+            let mut amount = fees;
+            if let Some(tips) = fees_then_tips.next() {
+                amount = amount.merge(tips);
+            }
+            FundBalance::on_unbalanced(amount);
+        }
     }
-  }
 }
 
 parameter_types! {
@@ -983,7 +993,7 @@ impl pallet_treasury::Config for Runtime {
   type SpendPeriod = SpendPeriod;
   type Burn = Burn;
   //TODO: Send burned to reward fund.
-  type BurnDestination = (); // = FundBalance;
+  type BurnDestination = FundBalance;
   type SpendFunds = Bounties;
   type PalletId = TreasuryModuleId;
   type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
@@ -1184,8 +1194,6 @@ parameter_types! {
   pub const ClaimsModuleId: PalletId = PalletId(*b"clvclaim");
 }
 
-impl parachain_info::Config for Runtime {}
-
 parameter_types! {
   pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
   pub const Period: u32 = 6 * HOURS;
@@ -1378,28 +1386,28 @@ impl pallet_offences::Config for Runtime {
 }
 
 // TODO:
-// parameter_types! {
-//     pub const RevenueModuleId: ModuleId = ModuleId(*b"py/rvnsr");
-// }
-// 
-// /// Configure the pallet-template in pallets/template.
-// impl pallet_revenue::Config for Runtime {
-//     type Event = Event;
-// }
-// 
-// //Config pallet-fund
-// 
-// impl pallet_fund::Config for Runtime {
-//     type Currency = Balances;
-//     type Event = Event;
-// }
-// 
-// // Config wallet revenue
-// 
-// impl pallet_revenue_fund::Config for Runtime {
-//     type Currency = Balances;
-//     type Event = Event;
-// }
+parameter_types! {
+    pub const RevenueModuleId: PalletId = PalletId(*b"py/rvnsr");
+}
+
+/// Configure the pallet-template in pallets/template.
+impl pallet_revenue::Config for Runtime {
+    type Event = Event;
+}
+
+//Config pallet-fund
+
+impl pallet_fund::Config for Runtime {
+    type Currency = Balances;
+    type Event = Event;
+}
+
+// Config wallet revenue
+
+impl pallet_revenue_fund::Config for Runtime {
+    type Currency = Balances;
+    type Event = Event;
+}
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -1465,17 +1473,15 @@ construct_runtime!(
     Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
     Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 
-    ParachainInfo: parachain_info::{Pallet, Storage, Config},
-
     Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
     Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
 
     AssetConfig: asset_config::{Pallet, Call, Storage, Event<T>},
     
     // TODO:
-    // Revenue: pallet_revenue::{Module, Call, Storage, Config<T>, Event<T>} ,
-    // Fund: pallet_fund::{Module, Call, Storage, Event<T>, Config},
-    // RevenueFund: pallet_revenue_fund::{Module, Call, Storage, Event<T>, Config},
+    Revenue: pallet_revenue::{Pallet, Call, Storage, Config<T>, Event<T>} ,
+    Fund: pallet_fund::{Pallet, Call, Storage, Event<T>, Config},
+    RevenueFund: pallet_revenue_fund::{Pallet, Call, Storage, Event<T>, Config},
   }
 );
 

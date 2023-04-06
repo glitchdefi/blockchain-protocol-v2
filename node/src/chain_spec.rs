@@ -2,9 +2,9 @@
     AccountId, Balance, BalancesConfig,
     EVMConfig, EthereumConfig, GenesisConfig, ImOnlineId, IndicesConfig,
     SessionConfig, SessionKeys, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+    RevenueConfig,
     DOLLARS,CENTS,MILLICENTS, WASM_BINARY
 };
-use cumulus_primitives_core::ParaId;
 use pallet_evm::GenesisAccount;
 use primitive_types::H160;
 use sc_service::ChainType;
@@ -151,7 +151,7 @@ fn get_endowed_evm_accounts(endowed_account: Vec<H160>) -> BTreeMap<H160, Genesi
     evm_accounts
 }
 
-pub fn development_config(id: ParaId) -> Result<ChainSpec, String> {
+pub fn development_config() -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(
@@ -171,7 +171,6 @@ pub fn development_config(id: ParaId) -> Result<ChainSpec, String> {
                 vec![],
                 true,
                 dev_endowed_evm_accounts(),
-                id,
             )
         },
         // Bootnodes
@@ -188,7 +187,7 @@ pub fn development_config(id: ParaId) -> Result<ChainSpec, String> {
     ))
 }
 
-pub fn local_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
+pub fn local_testnet_config() -> Result<ChainSpec, String> {
     let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
 
     Ok(ChainSpec::from_genesis(
@@ -224,7 +223,6 @@ pub fn local_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
                 ],
                 true,
                 endowed_evm_account(),
-                id,
             )
         },
         // Bootnodes
@@ -242,7 +240,7 @@ pub fn local_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
 }
 
 //Glitch testnet
-pub fn glitch_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
+pub fn glitch_testnet_config() -> Result<ChainSpec, String> {
   let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
   Ok(ChainSpec::from_genesis(
       //Name
@@ -321,7 +319,6 @@ pub fn glitch_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
           ],
           true,
           endowed_evm_account(),
-          id,
       ),
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
@@ -346,7 +343,7 @@ pub fn glitch_testnet_config(id: ParaId) -> Result<ChainSpec, String> {
 }
 
 //Glitch Mainnet
-pub fn glitch_mainnet_config(id: ParaId) -> Result<ChainSpec, String> {
+pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
   let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
   Ok(ChainSpec::from_genesis(
       //Name
@@ -415,7 +412,6 @@ pub fn glitch_mainnet_config(id: ParaId) -> Result<ChainSpec, String> {
           ],
           true,
           endowed_evm_account(),
-          id,
       ),
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
@@ -449,7 +445,7 @@ pub fn glitch_mainnet_config(id: ParaId) -> Result<ChainSpec, String> {
 }
 
 // Glitch UAT
-pub fn glitch_uat_config(id: ParaId) -> Result<ChainSpec, String> {
+pub fn glitch_uat_config() -> Result<ChainSpec, String> {
   let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
   Ok(ChainSpec::from_genesis(
       //Name
@@ -509,7 +505,6 @@ pub fn glitch_uat_config(id: ParaId) -> Result<ChainSpec, String> {
           ],
           true,
           endowed_evm_account(),
-          id,
       ),
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
@@ -544,7 +539,6 @@ fn glitch_genesis(
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
     endowed_eth_accounts: BTreeMap<H160, GenesisAccount>,
-    id: ParaId,
 ) -> GenesisConfig {
     let enable_println = true;
     const TOTAL_SUPPLY: Balance = 88_888_888 * DOLLARS;
@@ -600,7 +594,6 @@ fn glitch_genesis(
         },
         ethereum: EthereumConfig {},
         indices: IndicesConfig { indices: vec![] },
-        parachain_info: glitch_runtime::ParachainInfoConfig { parachain_id: id },
         collator_selection: glitch_runtime::CollatorSelectionConfig {
           invulnerables: initial_authorities
             .iter()
@@ -656,5 +649,11 @@ fn glitch_genesis(
         },
         im_online: Default::default(),
         authority_discovery: glitch_runtime::AuthorityDiscoveryConfig { keys: vec![] },
+        fund: Default::default(),
+        revenue_fund: Default::default(),
+        revenue: RevenueConfig {
+            // admin_genesis: get_account_id_from_seed::<sr25519::Public>("Alice")
+            admin_genesis: Some(AccountId::from_str("0x88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567").unwrap())
+        }
     }
 }

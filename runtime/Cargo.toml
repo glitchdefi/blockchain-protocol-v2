@@ -85,6 +85,9 @@ pallet-membership = {default-features = false, git = "https://github.com/parityt
 pallet-scheduler = {default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 pallet-utility = {default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 frame-benchmarking = {default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
+pallet-fund = {default-features = false, path = "../frame/pallet-fund" }
+pallet-revenue = {default-features = false, path = "../frame/pallet-revenue" }
+pallet-revenue-fund = {default-features = false, path = "../frame/pallet-revenue-fund" }
 
 pallet-collator-selection = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26", default-features = false }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26", default-features = false }
@@ -188,6 +191,9 @@ std = [
     "pallet-evm-precompile-simple/std",
     "pallet-ethereum/std",
     "pallet-proxy/std",
+    "pallet-fund/std",
+    "pallet-revenue/std",
+    "pallet-revenue-fund/std",
     "cumulus-pallet-xcmp-queue/std",
     "cumulus-pallet-dmp-queue/std",
     "cumulus-pallet-xcm/std",

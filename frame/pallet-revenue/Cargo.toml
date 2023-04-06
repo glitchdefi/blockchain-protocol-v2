@@ -1,0 +1,48 @@
+[package]
+authors = ['Ylgr']
+description = 'Revenue whitelisting services.'
+edition = '2021'
+license = 'GPL-3.0'
+name = 'pallet-revenue'
+version = '3.0.0'
+
+[dependencies]
+log = { version = "0.4" }
+serde = { default-features = false, version = "1.0.101" }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+rustc-hex = { default-features = false, version = "2.0.1" }
+#primitive-types = { version = "0.9", features = ["byteorder", "rustc-hex"],  default-features = false}
+
+# substrate frame dependencies
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+#sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.26" }
+ethereum-types = { version = "0.13", default-features = false }
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
+
+getrandom = { version = "0.2.3", features = ["js"], default-features = false }
+
+# local dependency
+pallet-ethereum = { path = "../ethereum", default-features = false }
+
+[dev-dependencies]
+hex-literal = "0.3.1"
+
+[features]
+default = ['std']
+std = [
+    "serde/std",
+    "rustc-hex/std",
+    "codec/std",
+    #"sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "frame-support/std",
+    "frame-system/std",
+    "getrandom/std",
+    "pallet-ethereum/std",
+    "ethereum-types/std",
+    "scale-info/std",
+]

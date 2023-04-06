@@ -1,0 +1,66 @@
+[package]
+name = "pallet-ethereum"
+version = "4.0.0-dev"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+description = "Ethereum compatibility full block processing emulation pallet for Substrate."
+license = "Apache-2.0"
+resolver = "2"
+
+[dependencies]
+rlp = { version = "0.5", default-features = false }
+serde = { version = "1.0.101", optional = true }
+codec = { package = "parity-scale-codec", version = "3", default-features = false }
+frame-support = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+frame-system = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+pallet-balances = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+pallet-timestamp = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+pallet-evm = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26", default-features = false }
+sp-runtime = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+sp-std = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+sp-io = { branch = "polkadot-v0.9.26", default-features = false, git = "https://github.com/paritytech/substrate" }
+fp-evm = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26", default-features = false }
+evm = { version = "0.35", features = ["with-codec"], default-features = false }
+ethereum = { version = "0.12", default-features = false, features = ["with-codec"] }
+ethereum-types = { version = "0.13", default-features = false }
+sha3 = { version = "0.8", default-features = false }
+fp-consensus = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26", default-features = false }
+fp-rpc = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26", default-features = false }
+fp-storage = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26", default-features = false }
+fp-self-contained = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26", default-features = false }
+scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
+
+[dev-dependencies]
+sp-core = { branch = "polkadot-v0.9.26", git = "https://github.com/paritytech/substrate" }
+libsecp256k1 = { version = "0.5", features = ["static-context", "hmac"] }
+
+[features]
+default = ["std"]
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+]
+std = [
+	"serde",
+	"codec/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-balances/std",
+	"pallet-timestamp/std",
+	"pallet-evm/std",
+	"sp-io/std",
+	"sp-std/std",
+	"fp-evm/std",
+	"ethereum/std",
+	"ethereum-types/std",
+	"rlp/std",
+	"sha3/std",
+	"fp-consensus/std",
+	"fp-rpc/std",
+	"fp-storage/std",
+	"evm/std",
+	"fp-self-contained/std",
+	"scale-info/std",
+]

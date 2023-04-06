@@ -100,3 +100,9 @@ ethereum = { git = "https://github.com/clover-network/ethereum", branch = "pangw
 evm = { git = "https://github.com/clover-network/evm", branch = "pangwa/evm-tracing" }
 evm-runtime = { git = "https://github.com/clover-network/evm", branch = "pangwa/evm-tracing" }
 evm-gasometer = { git = "https://github.com/clover-network/evm", branch = "pangwa/evm-tracing" }
+
+[patch.'https://github.com/clover-network/frontier.git']
+pallet-ethereum = { path = "frame/ethereum" }
+
+[patch.'https://github.com/paritytech/substrate.git']
+pallet-staking = { path = "frame/staking" }

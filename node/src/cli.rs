@@ -1,8 +1,18 @@
 use crate::chain_spec;
 use crate::rpc::EthApiCmd;
 use clap::Parser;
-use sc_cli::{KeySubcommand, SignCmd, VanityCmd, VerifyCmd};
+use sc_cli::{
+  KeySubcommand, SignCmd, VanityCmd, VerifyCmd, CliConfiguration, DefaultConfigurationValues,
+  ChainSpec, ImportParams, KeystoreParams, NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+};
 use std::path::PathBuf;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use regex::Regex;
+use sc_telemetry::TelemetryEndpoints;
+use sc_service::{
+  config::{BasePath, PrometheusConfig, TransactionPoolOptions},
+	Role,
+};
 
 /// Possible subcommands of the main binary.
 #[derive(Debug, clap::Subcommand)]
@@ -34,8 +44,8 @@ pub enum Subcommand {
   ExportState(sc_cli::ExportStateCmd),
 
   /// Export the genesis state of the parachain.
-  #[clap(name = "export-genesis-state")]
-  ExportGenesisState(ExportGenesisStateCommand),
+  //#[clap(name = "export-genesis-state")]
+  //ExportGenesisState(ExportGenesisStateCommand),
 
   /// Export the genesis wasm of the parachain.
   #[clap(name = "export-genesis-wasm")]
@@ -45,7 +55,7 @@ pub enum Subcommand {
   ImportBlocks(sc_cli::ImportBlocksCmd),
 
   /// Remove the whole chain.
-  PurgeChain(cumulus_client_cli::PurgeChainCmd),
+  //PurgeChain(cumulus_client_cli::PurgeChainCmd),
 
   /// Revert the chain to a previous state.
   Revert(sc_cli::RevertCmd),
@@ -61,11 +71,11 @@ pub struct RunCmd {
 
   #[allow(missing_docs)]
   #[clap(flatten)]
-  pub base: cumulus_client_cli::RunCmd,
+  pub base: sc_cli::RunCmd,
 
-  /// Id of the parachain this collator collates for.
-  #[clap(long)]
-  pub parachain_id: Option<u32>,
+  ///// Id of the parachain this collator collates for.
+  //#[clap(long)]
+  //pub parachain_id: Option<u32>,
 
   /// Enable EVM tracing module on a non-authority node.
   #[clap(long, conflicts_with = "validator", require_delimiter = true)]
@@ -96,6 +106,140 @@ pub struct RunCmd {
   /// Maximum fee history cache size.
   #[clap(long, default_value = "2048")]
   pub fee_history_limit: u64,
+}
+
+impl DefaultConfigurationValues for RunCmd {
+  fn p2p_listen_port() -> u16 {
+    30334
+  }
+
+  fn rpc_ws_listen_port() -> u16 {
+    9945
+  }
+
+  fn rpc_http_listen_port() -> u16 {
+    9934
+  }
+
+  fn prometheus_listen_port() -> u16 {
+    9616
+  }
+}
+
+impl CliConfiguration<Self> for RunCmd {
+  fn shared_params(&self) -> &SharedParams {
+    self.base.shared_params()
+  }
+
+  fn import_params(&self) -> Option<&ImportParams> {
+    self.base.import_params()
+  }
+
+  fn network_params(&self) -> Option<&NetworkParams> {
+    self.base.network_params()
+  }
+
+  fn keystore_params(&self) -> Option<&KeystoreParams> {
+    self.base.keystore_params()
+  }
+
+  fn base_path(&self) -> Result<Option<BasePath>> {
+    self.base.base_path()
+  }
+
+  fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+    self.base.rpc_http(default_listen_port)
+  }
+
+  fn rpc_ipc(&self) -> Result<Option<String>> {
+    self.base.rpc_ipc()
+  }
+
+  fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+    self.base.rpc_ws(default_listen_port)
+  }
+
+  fn prometheus_config(
+    &self,
+    default_listen_port: u16,
+    chain_spec: &Box<dyn ChainSpec>,
+  ) -> Result<Option<PrometheusConfig>> {
+    self
+      .base
+      .prometheus_config(default_listen_port, chain_spec)
+  }
+
+  fn init<F>(
+    &self,
+    _support_url: &String,
+    _impl_version: &String,
+    _logger_hook: F,
+    _config: &sc_service::Configuration,
+  ) -> Result<()>
+  where
+    F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
+  {
+    unreachable!("PolkadotCli is never initialized; qed");
+  }
+
+  fn chain_id(&self, is_dev: bool) -> Result<String> {
+    self.base.chain_id(is_dev)
+  }
+
+  fn role(&self, is_dev: bool) -> Result<sc_service::Role> {
+    self.base.role(is_dev)
+  }
+
+  fn transaction_pool(&self) -> Result<sc_service::config::TransactionPoolOptions> {
+    self.base.transaction_pool()
+  }
+
+  fn state_cache_child_ratio(&self) -> Result<Option<usize>> {
+    self.base.state_cache_child_ratio()
+  }
+
+  fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
+    self.base.rpc_methods()
+  }
+
+  fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
+    self.base.rpc_ws_max_connections()
+  }
+
+  fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
+    self.base.rpc_cors(is_dev)
+  }
+
+  // fn telemetry_external_transport(&self) -> Result<Option<sc_service::config::ExtTransport>> {
+  //   self.base.telemetry_external_transport()
+  // }
+
+  fn default_heap_pages(&self) -> Result<Option<u64>> {
+    self.base.default_heap_pages()
+  }
+
+  fn force_authoring(&self) -> Result<bool> {
+    self.base.force_authoring()
+  }
+
+  fn disable_grandpa(&self) -> Result<bool> {
+    self.base.disable_grandpa()
+  }
+
+  fn max_runtime_instances(&self) -> Result<Option<usize>> {
+    self.base.max_runtime_instances()
+  }
+
+  fn announce_block(&self) -> Result<bool> {
+    self.base.announce_block()
+  }
+
+  fn telemetry_endpoints(
+    &self,
+    chain_spec: &Box<dyn ChainSpec>,
+  ) -> Result<Option<sc_telemetry::TelemetryEndpoints>> {
+    self.base.telemetry_endpoints(chain_spec)
+  }
 }
 
 /// Command for exporting the genesis state of the parachain
@@ -153,36 +297,4 @@ pub struct Cli {
   /// Relaychain arguments
   #[clap(raw = true)]
   pub relaychain_args: Vec<String>,
-}
-
-#[derive(Debug)]
-pub struct RelayChainCli {
-  /// The actual relay chain cli object.
-  pub base: polkadot_cli::RunCmd,
-
-  /// Optional chain id that should be passed to the relay chain.
-  pub chain_id: Option<String>,
-
-  /// The base path that should be used by the relay chain.
-  pub base_path: Option<PathBuf>,
-}
-
-impl RelayChainCli {
-  /// Create a new instance of `Self`.
-  pub fn new<'a>(
-    para_config: &sc_service::Configuration,
-    relay_chain_args: impl Iterator<Item = &'a String>,
-  ) -> Self {
-    let extension = chain_spec::Extensions::try_get(&*para_config.chain_spec);
-    let chain_id = extension.map(|e| e.relay_chain.clone());
-    let base_path = para_config
-      .base_path
-      .as_ref()
-      .map(|x| x.path().join("polkadot"));
-    Self {
-      base_path,
-      chain_id,
-      base: polkadot_cli::RunCmd::from_iter(relay_chain_args),
-    }
-  }
 }

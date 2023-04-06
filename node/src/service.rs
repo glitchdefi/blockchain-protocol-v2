@@ -10,17 +10,6 @@ use crate::rpc::{EthApiCmd, RpcConfig, RpcRequesters};
 
 use jsonrpsee::RpcModule;
 
-use cumulus_client_cli::CollatorOptions;
-
-use cumulus_client_network::BlockAnnounceValidator;
-
-use cumulus_client_service::{
-  prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
-};
-use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
-use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface, RelayChainResult};
-use cumulus_relay_chain_rpc_interface::RelayChainRPCInterface;
 use sc_network::{Event, NetworkService};
 
 use glitch_runtime::{self, opaque::Block, RuntimeApi};
@@ -37,7 +26,6 @@ use sp_runtime::traits::Block as BlockT;
 use fc_consensus::FrontierBlockImport;
 use fc_mapping_sync::{MappingSyncWorker, SyncStrategy};
 use futures::StreamExt;
-use polkadot_service::CollatorPair;
 use sc_telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 use tokio::sync::Semaphore;
 
@@ -406,9 +394,6 @@ pub fn new_partial(
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl(
   mut parachain_config: Configuration,
-  polkadot_config: Configuration,
-  collator_options: CollatorOptions,
-  id: ParaId,
   cli: &Cli,
   hwbench: Option<sc_sysinfo::HwBench>,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient>)> {
@@ -696,17 +681,11 @@ async fn start_node_impl(
 /// Start a normal parachain node.
 pub async fn start_node(
   parachain_config: Configuration,
-  polkadot_config: Configuration,
-  collator_options: CollatorOptions,
-  id: ParaId,
   hwbench: Option<sc_sysinfo::HwBench>,
   cli: &Cli,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient>)> {
   start_node_impl(
     parachain_config,
-    polkadot_config,
-    collator_options,
-    id,
     cli,
     hwbench,
   )
