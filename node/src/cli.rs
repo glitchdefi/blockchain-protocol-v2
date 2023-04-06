@@ -171,15 +171,15 @@ impl CliConfiguration<Self> for RunCmd {
 
   fn init<F>(
     &self,
-    _support_url: &String,
-    _impl_version: &String,
-    _logger_hook: F,
-    _config: &sc_service::Configuration,
+    support_url: &String,
+    impl_version: &String,
+    logger_hook: F,
+    config: &sc_service::Configuration,
   ) -> Result<()>
   where
     F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
   {
-    unreachable!("PolkadotCli is never initialized; qed");
+    self.base.init(support_url, impl_version, logger_hook, config)
   }
 
   fn chain_id(&self, is_dev: bool) -> Result<String> {
