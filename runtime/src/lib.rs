@@ -147,7 +147,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
   spec_name: create_runtime_str!("glitch"),
   impl_name: create_runtime_str!("glitch"),
   authoring_version: 1,
-  spec_version: 112,
+  spec_version: 114,
   impl_version: 1,
   apis: RUNTIME_API_VERSIONS,
   transaction_version: 1,
@@ -191,7 +191,7 @@ parameter_types! {
   .build_or_panic();
   pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
   pub const Version: RuntimeVersion = VERSION;
-  pub const SS58Prefix: u8 = 128;
+  pub const SS58Prefix: u8 = 42;
 }
 
 // Configure FRAME pallets to include in runtime.
@@ -639,10 +639,10 @@ impl pallet_staking::Config for Runtime {
   type CurrencyBalance = Balance;
   type UnixTime = Timestamp;
   type CurrencyToVote = CurrencyToVote;
-  type RewardRemainder = Treasury;
+  type RewardRemainder = ();
   type Event = Event;
   type Slash = Treasury;
-  //TODO: Send (?) rewards to reward fund.
+  //TODO: Take rewards from reward fund.
   type Reward = Fund;
   type SessionsPerEra = SessionsPerEra;
   type BondingDuration = BondingDuration;
@@ -1478,7 +1478,6 @@ construct_runtime!(
 
     AssetConfig: asset_config::{Pallet, Call, Storage, Event<T>},
     
-    // TODO:
     Revenue: pallet_revenue::{Pallet, Call, Storage, Config<T>, Event<T>} ,
     Fund: pallet_fund::{Pallet, Call, Storage, Event<T>, Config},
     RevenueFund: pallet_revenue_fund::{Pallet, Call, Storage, Event<T>, Config},
