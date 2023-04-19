@@ -116,4 +116,3 @@ impl<T: Config> OnUnbalanced<PositiveImbalanceOf<T>> for Module<T> {
 		Self::deposit_event(Event::<T>::SpendFund(numeric_amount));
 	}
 }
-

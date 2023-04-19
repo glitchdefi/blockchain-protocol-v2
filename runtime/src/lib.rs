@@ -666,7 +666,7 @@ impl pallet_staking::Config for Runtime {
 }
 
 parameter_types! {
-  pub const ExistentialDeposit: u128 = 100 * CENTS;
+  pub const ExistentialDeposit: u128 = 1 * DOLLARS / 10;
   pub const MaxLocks: u32 = 50;
   pub const MaxReserves: u32 = 50;
 }
