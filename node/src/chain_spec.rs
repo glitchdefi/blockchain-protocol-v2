@@ -397,7 +397,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
         ),
       ],
           // root
-          hex!["d8d222c44e7b678dc07a1136ca146c8cf71d46d7327b67ab3d6abe3b4f83cb3d"].into(),
+          hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(),
           vec![
               hex!["1608a5e4d16f4b694a164372e1fd5af8944514d7cec9263fec457bac96e25565"].into(),
               hex!["9c5f9d91b99f8b1f25cf075ba57839734f3e249b72adcf04899a46c8cfd95b4e"].into(),
@@ -416,19 +416,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
       vec![
-           "/dns/fullnodes-mainnet-1.glitch.finance/tcp/30333/p2p/12D3KooWFKSEVZGNrS6THQ6J2vSgLDePdXXz9HYE6TtgopZV22T1"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-1.glitch.finance/tcp/30333/p2p/12D3KooWPRSGH3LnwG5Uhj9Nm7qY7hkdrhd4vg4znb49ix9ADZwD"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-2.glitch.finance/tcp/30333/p2p/12D3KooWBEyY6ySQqjniaqVHH1JtiMVU5KmSPvoPgqkpp6XhBjEt"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-3.glitch.finance/tcp/30333/p2p/12D3KooWKwDVXckeQ86PrNFCyrbaA4sEkg9hPY9a5fe2yZ3gSRX1"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-4.glitch.finance/tcp/30333/p2p/12D3KooWRYMq2fD7cRikXXc9doocmBNw37tfQTKSnPfEfqeaMyG3"
+           "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWE9d5iYYuom8HZnPVcBcWZ9vdJQrM8pSjJJuGBJywcWDx"
         .parse()
         .unwrap(),
       ],
@@ -712,6 +700,8 @@ fn glitch_genesis_mainnet(
     (hex!["8e65621224b9e3109d4826c62ef8e349a214f4111d73457d98dc72cc6a30ed7d"].into(), 478106479712000000u128.into()),
     (hex!["6d6f646c66756e64726576650000000000000000000000000000000000000000"].into(), 100000000000000000u128.into()),
     (hex!["6d6f646c70792f74727372790000000000000000000000000000000000000000"].into(), 100000000000000000u128.into()),
+    //for testing
+    (hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(), 100000000_000000000000000000u128.into()),
 
   ];
 

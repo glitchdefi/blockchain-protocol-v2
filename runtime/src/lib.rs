@@ -735,12 +735,12 @@ impl pallet_scheduler::Config for Runtime {
 }
 
 parameter_types! {
-  pub const LaunchPeriod: BlockNumber = 28 * DAYS;
-  pub const VotingPeriod: BlockNumber = 28 * DAYS;
-  pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
+  pub const LaunchPeriod: BlockNumber = 1 * HOURS;
+  pub const VotingPeriod: BlockNumber = 1 * HOURS;
+  pub const FastTrackVotingPeriod: BlockNumber = 10 * MINUTES;
   pub const MinimumDeposit: Balance = 100 * DOLLARS;
-  pub const EnactmentPeriod: BlockNumber = 28 * DAYS;
-  pub const CooloffPeriod: BlockNumber = 7 * DAYS;
+  pub const EnactmentPeriod: BlockNumber = 1 * HOURS;
+  pub const CooloffPeriod: BlockNumber = 1 * HOURS;
   // One cent: $10,000 / MB
   pub const PreimageByteDeposit: Balance = 10 * MILLICENTS;
   pub const InstantAllowed: bool = true;
