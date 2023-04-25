@@ -107,11 +107,11 @@ impl<T: Config> Pallet<T> {
 		let history_depth = Self::history_depth();
 		let mut current_check_era = current_era.saturating_sub(history_depth - 1);
 		let mut result: BalanceOf<T> = Zero::zero();
-		while current_check_era <= current_era {
-			if !<ErasNotClaimedReward<T>>::contains_key(&current_era){
+		while current_check_era < current_era {
+			if !<ErasNotClaimedReward<T>>::contains_key(&current_check_era){
 				log::warn!("Invalid era {} to calculate not claimed reward", current_check_era);
 			}else{
-				let reward = <ErasNotClaimedReward<T>>::get(&current_era);
+				let reward = <ErasNotClaimedReward<T>>::get(&current_check_era);
 				result = result.saturating_add(reward);
 			}
 			current_check_era += 1;
