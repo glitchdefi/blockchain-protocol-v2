@@ -25,7 +25,7 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		Currency, CurrencyToVote, Defensive, EstimateNextNewSession, Get, Imbalance,
-		LockableCurrency, OnUnbalanced, UnixTime, WithdrawReasons,
+		LockableCurrency, OnUnbalanced, UnixTime, WithdrawReasons, ExistenceRequirement,
 	},
 	weights::{Weight, WithPostDispatchInfo}, PalletId,
 };
@@ -241,7 +241,18 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
-		T::Reward::on_unbalanced(total_imbalance);
+		{
+			let fund_account_id = PalletId(*b"fundreve").into_account_truncating();
+			if let Err(problem) = T::Currency::settle(
+				&fund_account_id,
+				total_imbalance,
+				WithdrawReasons::TRANSFER,
+				ExistenceRequirement::KeepAlive
+			) {
+				return Err(Error::<T>::CannotPayout.with_weight(T::WeightInfo::payout_stakers_alive_staked(0)));
+			}
+		}
+		//T::Reward::on_unbalanced(total_imbalance);
 		debug_assert!(nominator_payout_count <= T::MaxNominatorRewardedPerValidator::get());
 		Ok(Some(T::WeightInfo::payout_stakers_alive_staked(nominator_payout_count)).into())
 	}

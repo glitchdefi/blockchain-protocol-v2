@@ -705,6 +705,8 @@ pub mod pallet {
 		TooManyValidators,
 		/// Commission is too low. Must be at least `MinCommission`.
 		CommissionTooLow,
+		/// For whatever reason, we can't pay out right now
+		CannotPayout,
 	}
 
 	#[pallet::hooks]
