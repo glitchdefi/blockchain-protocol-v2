@@ -837,7 +837,7 @@ impl pallet_multisig::Config for Runtime {
 }
 
 parameter_types! {
-  pub const CouncilMotionDuration: BlockNumber = 3 * DAYS;
+  pub const CouncilMotionDuration: BlockNumber = 1 * HOURS;
   pub const CouncilMaxProposals: u32 = 100;
   pub const GeneralCouncilMaxMembers: u32 = 100;
 }
@@ -899,7 +899,7 @@ parameter_types! {
   // additional data per vote is 32 bytes (account id).
   pub const VotingBondFactor: Balance = deposit(0, 32);
   /// Daily council elections.
-  pub const TermDuration: BlockNumber = 7 * DAYS;
+  pub const TermDuration: BlockNumber = 1 * HOURS;
   pub const DesiredMembers: u32 = 13;
   pub const DesiredRunnersUp: u32 = 20;
   pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
@@ -924,7 +924,7 @@ impl pallet_elections_phragmen::Config for Runtime {
 }
 
 parameter_types! {
-  pub const TechnicalMotionDuration: BlockNumber = 7 * DAYS;
+  pub const TechnicalMotionDuration: BlockNumber = 1 * HOURS;
   pub const TechnicalMaxProposals: u32 = 100;
   pub const TechnicalMaxMembers:u32 = 100;
 }
@@ -957,19 +957,19 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 parameter_types! {
   pub const ProposalBond: Permill = Permill::from_percent(5);
   pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
-  pub const SpendPeriod: BlockNumber = 1 * DAYS;
+  pub const SpendPeriod: BlockNumber = 1 * HOURS;
   pub const Burn: Permill = Permill::from_percent(1);
   pub const TreasuryModuleId: PalletId = PalletId(*b"py/trsry");
 
-  pub const TipCountdown: BlockNumber = 1 * DAYS;
+  pub const TipCountdown: BlockNumber = 1 * HOURS;
   pub const TipFindersFee: Percent = Percent::from_percent(20);
   pub const TipReportDepositBase: Balance = 1 * DOLLARS;
   pub const DataDepositPerByte: Balance = 10 * MILLICENTS;
 
   pub const MaximumReasonLength: u32 = 16384;
   pub const BountyDepositBase: Balance = 1 * DOLLARS;
-  pub const BountyDepositPayoutDelay: BlockNumber = 1 * DAYS;
-  pub const BountyUpdatePeriod: BlockNumber = 7 * DAYS;
+  pub const BountyDepositPayoutDelay: BlockNumber = 1 * HOURS;
+  pub const BountyUpdatePeriod: BlockNumber = 1 * HOURS;
   pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
   pub const BountyValueMinimum: Balance = 5 * DOLLARS;
   pub const CuratorDepositMin: Balance = 100 * DOLLARS;
