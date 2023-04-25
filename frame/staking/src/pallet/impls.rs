@@ -27,12 +27,12 @@ use frame_support::{
 		Currency, CurrencyToVote, Defensive, EstimateNextNewSession, Get, Imbalance,
 		LockableCurrency, OnUnbalanced, UnixTime, WithdrawReasons,
 	},
-	weights::{Weight, WithPostDispatchInfo},
+	weights::{Weight, WithPostDispatchInfo}, PalletId,
 };
 use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use pallet_session::historical;
 use sp_runtime::{
-	traits::{Bounded, Convert, SaturatedConversion, Saturating, StaticLookup, Zero},
+	traits::{Bounded, Convert, SaturatedConversion, Saturating, StaticLookup, Zero, AccountIdConversion},
 	Perbill,
 };
 use sp_staking::{
@@ -42,9 +42,10 @@ use sp_staking::{
 use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 
 use crate::{
-	log, slashing, weights::WeightInfo, ActiveEraInfo, BalanceOf, EraPayout, Exposure, ExposureOf,
+	log, slashing, weights::WeightInfo, ActiveEraInfo, BalanceOf, Exposure, ExposureOf,
 	Forcing, IndividualExposure, Nominations, PositiveImbalanceOf, RewardDestination,
 	SessionInterface, StakingLedger, ValidatorPrefs,
+	pallet::RevenueWallet,
 };
 
 use super::{pallet::*, STAKING_ID};
@@ -89,6 +90,39 @@ impl<T: Config> Pallet<T> {
 	pub fn weight_of(who: &T::AccountId) -> VoteWeight {
 		let issuance = T::Currency::total_issuance();
 		Self::slashable_balance_of_vote_weight(who, issuance)
+	}
+
+	// Update eras not claimed reward
+	fn update_not_claimed_reward(era: EraIndex, claimed_value: BalanceOf<T>) {
+		if !<ErasNotClaimedReward<T>>::contains_key(&era){
+			log::warn!("Invalid era {} to update not claimed reward", era);
+		}else{
+			let reward = <ErasNotClaimedReward<T>>::get(&era);
+			let reward = reward.saturating_sub(claimed_value);
+			<ErasNotClaimedReward<T>>::insert(era, reward);
+		}
+	}
+
+	fn get_total_not_claimed_reward(current_era: EraIndex) -> BalanceOf<T> {
+		let history_depth = Self::history_depth();
+		let mut current_check_era = current_era.saturating_sub(history_depth - 1);
+		let mut result: BalanceOf<T> = Zero::zero();
+		while current_check_era <= current_era {
+			if !<ErasNotClaimedReward<T>>::contains_key(&current_era){
+				log::warn!("Invalid era {} to calculate not claimed reward", current_check_era);
+			}else{
+				let reward = <ErasNotClaimedReward<T>>::get(&current_era);
+				result = result.saturating_add(reward);
+			}
+			current_check_era += 1;
+		}
+		result
+	}
+
+	// get pallet fund balance
+	fn fund_balance() -> BalanceOf<T> {
+		let fund_account_id = PalletId(*b"fundreve").into_account_truncating();
+		T::Currency::free_balance(&fund_account_id)
 	}
 
 	pub(super) fn do_payout_stakers(
@@ -181,6 +215,7 @@ impl<T: Config> Pallet<T> {
 			Self::make_payout(&ledger.stash, validator_staking_payout + validator_commission_payout)
 		{
 			Self::deposit_event(Event::<T>::Rewarded(ledger.stash, imbalance.peek()));
+			Self::update_not_claimed_reward(era, imbalance.peek());
 			total_imbalance.subsume(imbalance);
 		}
 
@@ -383,13 +418,19 @@ impl<T: Config> Pallet<T> {
 			let era_duration = (now_as_millis_u64 - active_era_start).saturated_into::<u64>();
 			let staked = Self::eras_total_stake(&active_era.index);
 			let issuance = T::Currency::total_issuance();
-			let (validator_payout, rest) = T::EraPayout::era_payout(staked, issuance, era_duration);
 
-			Self::deposit_event(Event::<T>::EraPaid(active_era.index, validator_payout, rest));
+			T::RevenueFund::trigger_wallet();
+			let total_fund = Self::fund_balance();
+			let not_claimed_reward = Self::get_total_not_claimed_reward(active_era.index);
+			let era_reward = total_fund.saturating_sub(not_claimed_reward);
+			log::warn!("Era {} reward {:#?}", active_era.index, era_reward);
+			let validator_payout = era_reward;
+
+			Self::deposit_event(Event::<T>::EraPaid(active_era.index, validator_payout));
 
 			// Set ending era reward.
 			<ErasValidatorReward<T>>::insert(&active_era.index, validator_payout);
-			T::RewardRemainder::on_unbalanced(T::Currency::issue(rest));
+			<ErasNotClaimedReward<T>>::insert(&active_era.index, validator_payout);
 
 			// Clear offending validators.
 			<OffendingValidators<T>>::kill();
@@ -594,6 +635,7 @@ impl<T: Config> Pallet<T> {
 		<ErasValidatorReward<T>>::remove(era_index);
 		<ErasRewardPoints<T>>::remove(era_index);
 		<ErasTotalStake<T>>::remove(era_index);
+		<ErasNotClaimedReward<T>>::remove(era_index);
 		ErasStartSessionIndex::<T>::remove(era_index);
 	}
 

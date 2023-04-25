@@ -40,7 +40,7 @@ mod impls;
 pub use impls::*;
 
 use crate::{
-	slashing, weights::WeightInfo, ActiveEraInfo, BalanceOf, EraPayout, EraRewardPoints, Exposure,
+	slashing, weights::WeightInfo, ActiveEraInfo, BalanceOf, EraRewardPoints, Exposure,
 	Forcing, MaxUnlockingChunks, NegativeImbalanceOf, Nominations, PositiveImbalanceOf, Releases,
 	RewardDestination, SessionInterface, StakingLedger, UnappliedSlash, UnlockChunk,
 	ValidatorPrefs,
@@ -124,10 +124,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxNominations: Get<u32>;
 
-		/// Tokens have been minted and are unused for validator-reward.
-		/// See [Era payout](./index.html#era-payout).
-		type RewardRemainder: OnUnbalanced<NegativeImbalanceOf<Self>>;
-
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -159,10 +155,6 @@ pub mod pallet {
 
 		/// Interface for interacting with a session pallet.
 		type SessionInterface: SessionInterface<Self::AccountId>;
-
-		/// The payout for validators and the system for the current era.
-		/// See [Era payout](./index.html#era-payout).
-		type EraPayout: EraPayout<BalanceOf<Self>>;
 
 		/// Something that can estimate the next session change, accurately or as a best effort
 		/// guess.
@@ -208,6 +200,12 @@ pub mod pallet {
 	pub(crate) fn HistoryDepthOnEmpty() -> u32 {
 		84u32
 	}
+
+	///
+	#[pallet::storage]
+	#[pallet::getter(fn eras_not_claimed_reward)]
+	pub type ErasNotClaimedReward<T: Config> =
+		StorageMap<_, Twox64Concat, EraIndex, BalanceOf<T>, ValueQuery>;
 
 	/// Number of eras to keep in history.
 	///
@@ -618,8 +616,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// The era payout has been set; the first balance is the validator-payout; the second is
 		/// the remainder from the maximum amount of reward.
-		/// \[era_index, validator_payout, remainder\]
-		EraPaid(EraIndex, BalanceOf<T>, BalanceOf<T>),
+		/// \[era_index, validator_payout\]
+		EraPaid(EraIndex, BalanceOf<T>),
 		/// The nominator has been rewarded by this amount. \[stash, amount\]
 		Rewarded(T::AccountId, BalanceOf<T>),
 		/// One validator (and its nominators) has been slashed by the given amount.
