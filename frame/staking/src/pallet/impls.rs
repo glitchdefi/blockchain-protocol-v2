@@ -25,7 +25,7 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{
 		Currency, CurrencyToVote, Defensive, EstimateNextNewSession, Get, Imbalance,
-		LockableCurrency, OnUnbalanced, UnixTime, WithdrawReasons, ExistenceRequirement,
+		LockableCurrency, UnixTime, WithdrawReasons, ExistenceRequirement,
 	},
 	weights::{Weight, WithPostDispatchInfo}, PalletId,
 };
@@ -122,7 +122,7 @@ impl<T: Config> Pallet<T> {
 	// get pallet fund balance
 	fn fund_balance() -> BalanceOf<T> {
 		let fund_account_id = PalletId(*b"fundreve").into_account_truncating();
-		T::Currency::free_balance(&fund_account_id).saturating_sub(primitives::ExistentialDeposit.into())
+		T::Currency::free_balance(&fund_account_id).saturating_sub(primitives::EXISTENTIAL_DEPOSIT.into())
 	}
 
 	pub(super) fn do_payout_stakers(
@@ -243,7 +243,7 @@ impl<T: Config> Pallet<T> {
 		let value = total_imbalance.peek();
 		{
 			let fund_account_id = PalletId(*b"fundreve").into_account_truncating();
-			if let Err(problem) = T::Currency::settle(
+			if let Err(_problem) = T::Currency::settle(
 				&fund_account_id,
 				total_imbalance,
 				WithdrawReasons::TRANSFER,
@@ -428,9 +428,9 @@ impl<T: Config> Pallet<T> {
 		if let Some(active_era_start) = active_era.start {
 			let now_as_millis_u64 = T::UnixTime::now().as_millis().saturated_into::<u64>();
 
-			let era_duration = (now_as_millis_u64 - active_era_start).saturated_into::<u64>();
-			let staked = Self::eras_total_stake(&active_era.index);
-			let issuance = T::Currency::total_issuance();
+			let _era_duration = (now_as_millis_u64 - active_era_start).saturated_into::<u64>();
+			let _staked = Self::eras_total_stake(&active_era.index);
+			let _issuance = T::Currency::total_issuance();
 
 			T::RevenueFund::trigger_wallet();
 			let total_fund = Self::fund_balance();

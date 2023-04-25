@@ -63,6 +63,7 @@ pub struct FullDeps<C, P, A: ChainApi, SC, B> {
   pub select_chain: SC,
   /// Graph pool instance.
   pub graph: Arc<Pool<A>>,
+  /// Chain specification.
   pub chain_spec: Box<dyn sc_chain_spec::ChainSpec>,
   /// Whether to deny unsafe calls
   pub deny_unsafe: DenyUnsafe,
