@@ -837,7 +837,7 @@ impl pallet_multisig::Config for Runtime {
 }
 
 parameter_types! {
-  pub const CouncilMotionDuration: BlockNumber = 3 * DAYS;
+  pub const CouncilMotionDuration: BlockNumber = 7 * DAYS;
   pub const CouncilMaxProposals: u32 = 100;
   pub const GeneralCouncilMaxMembers: u32 = 100;
 }
@@ -956,8 +956,8 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 
 parameter_types! {
   pub const ProposalBond: Permill = Permill::from_percent(5);
-  pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
-  pub const SpendPeriod: BlockNumber = 1 * DAYS;
+  pub const ProposalBondMinimum: Balance = 100 * DOLLARS;
+  pub const SpendPeriod: BlockNumber = 24 * DAYS;
   pub const Burn: Permill = Permill::from_percent(1);
   pub const TreasuryModuleId: PalletId = PalletId(*b"py/trsry");
 
@@ -968,10 +968,10 @@ parameter_types! {
 
   pub const MaximumReasonLength: u32 = 16384;
   pub const BountyDepositBase: Balance = 1 * DOLLARS;
-  pub const BountyDepositPayoutDelay: BlockNumber = 1 * DAYS;
-  pub const BountyUpdatePeriod: BlockNumber = 7 * DAYS;
+  pub const BountyDepositPayoutDelay: BlockNumber = 8 * DAYS;
+  pub const BountyUpdatePeriod: BlockNumber = 90 * DAYS;
   pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
-  pub const BountyValueMinimum: Balance = 5 * DOLLARS;
+  pub const BountyValueMinimum: Balance = 10 * DOLLARS;
   pub const CuratorDepositMin: Balance = 100 * DOLLARS;
   pub const CuratorDepositMax: Balance = 10000 * DOLLARS;
   pub const MaxApprovals: u32 = 100;
@@ -1026,7 +1026,7 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-  pub const TransactionByteFee: Balance = MILLICENTS;
+  pub const TransactionByteFee: Balance = 10 * MILLICENTS;
   pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
   pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
   pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
