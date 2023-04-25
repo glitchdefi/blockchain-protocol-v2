@@ -639,7 +639,6 @@ impl pallet_staking::Config for Runtime {
   type CurrencyBalance = Balance;
   type UnixTime = Timestamp;
   type CurrencyToVote = CurrencyToVote;
-  type RewardRemainder = ();
   type Event = Event;
   type Slash = Treasury;
   //TODO: Take rewards from reward fund.
@@ -650,7 +649,6 @@ impl pallet_staking::Config for Runtime {
   // A super-majority of the council can cancel the slash.
   type SlashCancelOrigin = SlashCancelOrigin;
   type SessionInterface = Self;
-  type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
   type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
   type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
   type NextNewSession = Session;
