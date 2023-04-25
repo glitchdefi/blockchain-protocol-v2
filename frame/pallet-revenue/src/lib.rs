@@ -4,10 +4,6 @@
 pub use pallet::*;
 use pallet_ethereum::RevenueWhiteList;
 use ethereum_types::H160;
-use log::warn;
-
-#[cfg(feature = "std")]
-use frame_support::traits::GenesisBuild;
 
 #[frame_support::pallet]
 pub mod pallet {

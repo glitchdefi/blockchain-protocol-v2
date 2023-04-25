@@ -308,8 +308,7 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
-	curve::PiecewiseLinear,
-	traits::{AtLeast32BitUnsigned, Convert, Saturating, Zero},
+	traits::{Convert, Saturating, Zero},
 	Perbill, Perquintill, RuntimeDebug,
 };
 use sp_staking::{

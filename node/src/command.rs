@@ -20,21 +20,15 @@ use crate::{
   chain_spec,
   cli::{Cli, Subcommand},
 };
-use glitch_runtime::Block;
 //use cumulus_client_cli::generate_genesis_block;
-use log::info;
 use sc_cli::{
-  ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
-  NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+  ChainSpec, Result, RuntimeVersion, SubstrateCli,
 };
 use sc_service::{
-  config::{BasePath, PrometheusConfig},
   PartialComponents,
 };
 use sp_core::hexdisplay::HexDisplay;
-use sp_core::Encode;
-use sp_runtime::traits::{AccountIdConversion, Block as BlockT};
-use std::{io::Write, net::SocketAddr};
+use std::{io::Write};
 
 fn load_spec(
   id: &str,
@@ -256,7 +250,7 @@ pub fn run() -> sc_cli::Result<()> {
           None
         };
 
-        let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
+        let _state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 
         crate::service::start_node(config, hwbench, &cli)
           .await

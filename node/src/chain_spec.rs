@@ -1,9 +1,9 @@
  use glitch_runtime::{
     AccountId, Balance, BalancesConfig,
     EVMConfig, EthereumConfig, GenesisConfig, ImOnlineId, IndicesConfig,
-    SessionConfig, SessionKeys, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+    SessionKeys, Signature, StakerStatus, SudoConfig, SystemConfig,
     RevenueConfig,
-    DOLLARS,CENTS,MILLICENTS, WASM_BINARY
+    DOLLARS, WASM_BINARY
 };
 use pallet_evm::GenesisAccount;
 use primitive_types::H160;
@@ -19,12 +19,11 @@ use sp_runtime::{
 };
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use sc_telemetry::TelemetryEndpoints;
 use hex_literal::hex;
 use sp_core::crypto::UncheckedInto;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
+use sc_chain_spec::{ChainSpecExtension};
 use pallet_staking::Forcing;
 
 // The URL for the telemetry server.
@@ -540,7 +539,6 @@ fn glitch_genesis(
     _enable_println: bool,
     endowed_eth_accounts: BTreeMap<H160, GenesisAccount>,
 ) -> GenesisConfig {
-    let enable_println = true;
     const TOTAL_SUPPLY: Balance = 88_888_888 * DOLLARS;
     const STASH: Balance = 88_888 * DOLLARS;
     const AUTHOR_BALANCE: Balance = 330_000 * DOLLARS;

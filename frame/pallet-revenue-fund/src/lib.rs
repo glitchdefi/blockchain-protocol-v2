@@ -3,10 +3,10 @@
 pub use pallet::*;
 use frame_support::{
 	traits::{
-		Currency, WithdrawReasons, ExistenceRequirement, OnUnbalanced, Imbalance,
+		Currency, ExistenceRequirement,
 	},
-	dispatch::{DispatchError, DispatchResult},
-	print, PalletId,
+	dispatch::{DispatchError},
+	PalletId,
 };
 use pallet_staking::RevenueWallet;
 use sp_runtime::{traits::AccountIdConversion};
@@ -59,9 +59,9 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig/*<T>*/ {
 		fn build(&self) {
-			let account_id = <Module<T>>::account_id();
+			let account_id = <Pallet<T>>::account_id();
 			let _ = T::Currency::make_free_balance_be(
-				&<Module<T>>::account_id(),
+				&account_id,
 				T::Currency::minimum_balance(),
 			);
 		}
@@ -105,7 +105,7 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
 	/// The account ID that holds the revenue's funds
 	pub fn account_id() -> T::AccountId {
 		PALLET_ID.into_account_truncating()
@@ -121,7 +121,7 @@ impl<T: Config> Module<T> {
 	// pub fn u64_to_balance_option(input: u64) -> BalanceOf<T> { input.try_into().ok() }
 }
 
-impl<T:Config> RevenueWallet for Module<T> {
+impl<T:Config> RevenueWallet for Pallet<T> {
 	fn trigger_wallet() {
 		let amount = Self::pot();
 
