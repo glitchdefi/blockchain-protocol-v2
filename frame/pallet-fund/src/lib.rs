@@ -102,7 +102,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> OnUnbalanced<PositiveImbalanceOf<T>> for Module<T> {
 	fn on_nonzero_unbalanced(amount: PositiveImbalanceOf<T>) {
 		let numeric_amount = amount.peek();
-		if let Err(problem) = T::Currency::settle(
+		/*if let Err(problem) = T::Currency::settle(
 			&Self::account_id(),
 			amount,
 			WithdrawReasons::TRANSFER,
@@ -112,7 +112,7 @@ impl<T: Config> OnUnbalanced<PositiveImbalanceOf<T>> for Module<T> {
 			// Nothing else to do here.
 			drop(problem);
 			return;
-		}
+		}*/
 		Self::deposit_event(Event::<T>::SpendFund(numeric_amount));
 	}
 }
