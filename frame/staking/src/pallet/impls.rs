@@ -122,7 +122,7 @@ impl<T: Config> Pallet<T> {
 	// get pallet fund balance
 	fn fund_balance() -> BalanceOf<T> {
 		let fund_account_id = PalletId(*b"fundreve").into_account_truncating();
-		T::Currency::free_balance(&fund_account_id)
+		T::Currency::free_balance(&fund_account_id).saturating_sub(primitives::ExistentialDeposit.into())
 	}
 
 	pub(super) fn do_payout_stakers(
@@ -215,7 +215,6 @@ impl<T: Config> Pallet<T> {
 			Self::make_payout(&ledger.stash, validator_staking_payout + validator_commission_payout)
 		{
 			Self::deposit_event(Event::<T>::Rewarded(ledger.stash, imbalance.peek()));
-			Self::update_not_claimed_reward(era, imbalance.peek());
 			total_imbalance.subsume(imbalance);
 		}
 
@@ -241,6 +240,7 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
+		let value = total_imbalance.peek();
 		{
 			let fund_account_id = PalletId(*b"fundreve").into_account_truncating();
 			if let Err(problem) = T::Currency::settle(
@@ -249,9 +249,11 @@ impl<T: Config> Pallet<T> {
 				WithdrawReasons::TRANSFER,
 				ExistenceRequirement::KeepAlive
 			) {
+				log::warn!("Unable to pay out {:#?}", value);
 				return Err(Error::<T>::CannotPayout.with_weight(T::WeightInfo::payout_stakers_alive_staked(0)));
 			}
 		}
+		Self::update_not_claimed_reward(era, value);
 		//T::Reward::on_unbalanced(total_imbalance);
 		debug_assert!(nominator_payout_count <= T::MaxNominatorRewardedPerValidator::get());
 		Ok(Some(T::WeightInfo::payout_stakers_alive_staked(nominator_payout_count)).into())

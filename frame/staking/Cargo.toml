@@ -29,6 +29,7 @@ pallet-authorship = {default-features = false, git = "https://github.com/parityt
 sp-application-crypto = {default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
 frame-election-provider-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26", default-features = false }
 log = { version = "0.4.17", default-features = false }
+primitives = { default-features = false, package = 'clover-primitives', path = '../../primitives'}
 
 # Optional imports for benchmarking
 frame-benchmarking = {default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.26" }
@@ -64,6 +65,7 @@ std = [
 	"sp-application-crypto/std",
 	"log/std",
 	"frame-election-provider-support/std",
+	'primitives/std',
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",

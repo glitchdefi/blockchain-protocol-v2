@@ -5769,6 +5769,7 @@ dependencies = [
 name = "pallet-staking"
 version = "4.0.0-dev"
 dependencies = [
+ "clover-primitives",
  "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",

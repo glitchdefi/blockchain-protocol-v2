@@ -88,3 +88,5 @@ pub mod currency {
   pub const MILLICENTS: Balance = CENTS / 1000; // 10_000_000_000_000
   pub const MICROCENTS: Balance = MILLICENTS / 1000; // 10_000_000_000
 }
+
+pub const ExistentialDeposit: u128 = 10 * currency::CENTS;
