@@ -70,15 +70,6 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::{Perbill, Permill, RuntimeAppPublic};
 use pallet_session::historical as session_historical;
 
-use runtime_parachains::{
-	configuration as parachains_configuration, disputes as parachains_disputes,
-	dmp as parachains_dmp, hrmp as parachains_hrmp, inclusion as parachains_inclusion,
-	initializer as parachains_initializer, origin as parachains_origin, paras as parachains_paras,
-	paras_inherent as parachains_paras_inherent, reward_points as parachains_reward_points,
-	runtime_api_impl::v2 as parachains_runtime_api_impl, scheduler as parachains_scheduler,
-	session_info as parachains_session_info, shared as parachains_shared, ump as parachains_ump,
-};
-
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 
 pub use primitives::{
@@ -87,9 +78,8 @@ pub use primitives::{
 };
 
 // Polkadot imports
-use pallet_xcm::{EnsureXcm, IsMajorityOfBody};
 use polkadot_runtime_common::{
-  BlockHashCount, prod_or_fast, CurrencyToVote,
+  BlockHashCount, /*prod_or_fast,*/ CurrencyToVote,
 };
 use xcm::latest::BodyId;
 
@@ -664,7 +654,7 @@ impl pallet_staking::Config for Runtime {
 }
 
 parameter_types! {
-  pub const ExistentialDeposit: u128 = 1 * DOLLARS / 10;
+  pub const ExistentialDeposit: u128 = primitives::EXISTENTIAL_DEPOSIT;
   pub const MaxLocks: u32 = 50;
   pub const MaxReserves: u32 = 50;
 }
@@ -956,7 +946,7 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 
 parameter_types! {
   pub const ProposalBond: Permill = Permill::from_percent(5);
-  pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
+  pub const ProposalBondMinimum: Balance = 100 * DOLLARS;
   pub const SpendPeriod: BlockNumber = 1 * HOURS;
   pub const Burn: Permill = Permill::from_percent(1);
   pub const TreasuryModuleId: PalletId = PalletId(*b"py/trsry");
@@ -971,7 +961,7 @@ parameter_types! {
   pub const BountyDepositPayoutDelay: BlockNumber = 1 * HOURS;
   pub const BountyUpdatePeriod: BlockNumber = 1 * HOURS;
   pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
-  pub const BountyValueMinimum: Balance = 5 * DOLLARS;
+  pub const BountyValueMinimum: Balance = 10 * DOLLARS;
   pub const CuratorDepositMin: Balance = 100 * DOLLARS;
   pub const CuratorDepositMax: Balance = 10000 * DOLLARS;
   pub const MaxApprovals: u32 = 100;
@@ -1026,7 +1016,7 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-  pub const TransactionByteFee: Balance = MILLICENTS;
+  pub const TransactionByteFee: Balance = 10 * MILLICENTS;
   pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
   pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
   pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);

@@ -1,9 +1,9 @@
  use glitch_runtime::{
     AccountId, Balance, BalancesConfig,
     EVMConfig, EthereumConfig, GenesisConfig, ImOnlineId, IndicesConfig,
-    SessionConfig, SessionKeys, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+    SessionKeys, Signature, StakerStatus, SudoConfig, SystemConfig,
     RevenueConfig,
-    DOLLARS,CENTS,MILLICENTS, WASM_BINARY
+    DOLLARS, WASM_BINARY
 };
 use pallet_evm::GenesisAccount;
 use primitive_types::H160;
@@ -19,12 +19,11 @@ use sp_runtime::{
 };
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use sc_telemetry::TelemetryEndpoints;
 use hex_literal::hex;
 use sp_core::crypto::UncheckedInto;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
+use sc_chain_spec::{ChainSpecExtension};
 use pallet_staking::Forcing;
 
 // The URL for the telemetry server.
@@ -528,7 +527,6 @@ fn glitch_genesis(
     _enable_println: bool,
     endowed_eth_accounts: BTreeMap<H160, GenesisAccount>,
 ) -> GenesisConfig {
-    let enable_println = true;
     const TOTAL_SUPPLY: Balance = 88_888_888 * DOLLARS;
     const STASH: Balance = 88_888 * DOLLARS;
     const AUTHOR_BALANCE: Balance = 330_000 * DOLLARS;
@@ -671,12 +669,12 @@ fn glitch_genesis_mainnet(
     (hex!["9c5f9d91b99f8b1f25cf075ba57839734f3e249b72adcf04899a46c8cfd95b4e"].into(), 8789888770000000000000000u128.into()),
     (hex!["c4a01a3a57602229e112de1449d83cfbbfbc6d423da7e0ab7baeacfcf83f1d2f"].into(), 8789888770000000000000000u128.into()),
     (hex!["d8412bac516c4c079016a8ae6eefb983837274d884868dc9528e6a2a27dfbb0d"].into(), 8789888770000000000000000u128.into()),
-    (hex!["1608a5e4d16f4b694a164372e1fd5af8944514d7cec9263fec457bac96e25565"].into(), 7529883935526833446000000u128.into()),
+    (hex!["1608a5e4d16f4b694a164372e1fd5af8944514d7cec9263fec457bac96e25565"].into(), 7529883938533221586000000u128.into()),
     (hex!["5c790cbdc11a4bf8934250eb27bf26f2ea05db67b4f5fa48a760bcfd9ef43b49"].into(), 330000000200000000000000u128.into()),
     (hex!["2600c75f5fe2ddb65676361769e637069cb2041622979ba118a68993279deb0b"].into(), 330000000100000000000000u128.into()),
-    (hex!["68f1d67412d6528992d391025dbc36a3261c1efaf22066dff692b2e4c1fb726a"].into(), 184586989457641510000000u128.into()),
-    (hex!["42db32bc3741422b85c021bddfac3a558a83528143b1be501cb8e2c87dd3136f"].into(), 136871475391367500000000u128.into()),
-    (hex!["2cc43f0eb835443c7c6c01ed86095a2235ac8f53674f81ac1a71ed98187f5615"].into(), 97539997082378040000000u128.into()),
+    (hex!["68f1d67412d6528992d391025dbc36a3261c1efaf22066dff692b2e4c1fb726a"].into(), 178416986451253370000000u128.into()),
+    (hex!["42db32bc3741422b85c021bddfac3a558a83528143b1be501cb8e2c87dd3136f"].into(), 139956475391367500000000u128.into()),
+    (hex!["2cc43f0eb835443c7c6c01ed86095a2235ac8f53674f81ac1a71ed98187f5615"].into(), 100624997082378040000000u128.into()),
     (hex!["065647e8ae29ae3f696f1c4087852a60bfb2ba05d46c59d123b7767a90ed8c6d"].into(), 89999997082378040000000u128.into()),
     (hex!["068e505204f46e1fc793b82f64bab6d64c05e783fa93c37a147a9a527c66d174"].into(), 89999997082378040000000u128.into()),
     (hex!["0a567658e49a30fd7b4cb5055cfea38fda48f93b758aeb5090cf19a7fa3ff64e"].into(), 89999997082378040000000u128.into()),
@@ -702,7 +700,6 @@ fn glitch_genesis_mainnet(
     (hex!["6d6f646c70792f74727372790000000000000000000000000000000000000000"].into(), 100000000000000000u128.into()),
     //for testing
     (hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(), 100000000_000000000000000000u128.into()),
-
   ];
 
   let mut ret = glitch_genesis(wasm_binary, initial_authorities.clone(), root_key, endowed_accounts, enable_println, endowed_eth_accounts);

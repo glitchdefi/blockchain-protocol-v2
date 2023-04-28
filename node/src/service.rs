@@ -10,7 +10,7 @@ use crate::rpc::{EthApiCmd, RpcConfig, RpcRequesters};
 
 use jsonrpsee::RpcModule;
 
-use sc_network::{Event, NetworkService};
+use sc_network::{Event};
 
 use glitch_runtime::{self, opaque::Block, RuntimeApi};
 use fc_rpc::{CacheTask, DebugTask, OverrideHandle};
@@ -395,7 +395,7 @@ pub fn new_partial(
 async fn start_node_impl(
   mut parachain_config: Configuration,
   cli: &Cli,
-  hwbench: Option<sc_sysinfo::HwBench>,
+  _hwbench: Option<sc_sysinfo::HwBench>,
 ) -> sc_service::error::Result<(TaskManager, Arc<FullClient>)> {
   if matches!(parachain_config.role, Role::Light) {
     return Err("Light client not supported!".into());
@@ -414,12 +414,12 @@ async fn start_node_impl(
     other:
       (
         partial_rpc_extensions_builder,
-        /*pending_transactions,*/ filter_pool,
+        filter_pool,
         frontier_backend,
         mut telemetry,
-        telemetry_worker_handle,
+        _telemetry_worker_handle,
         (_fee_history_cache, _fee_history_cache_limit),
-        grandpa_block_import,
+        _grandpa_block_import,
         block_import,
         grandpa_link,
         babe_link,
@@ -506,7 +506,7 @@ async fn start_node_impl(
     telemetry: telemetry.as_mut(),
   })?;
 
-  let announce_block = {
+  let _announce_block = {
     let network = network.clone();
     Arc::new(move |hash, data| network.announce_block(hash, data))
   };

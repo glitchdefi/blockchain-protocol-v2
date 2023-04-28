@@ -1,17 +1,13 @@
-use crate::chain_spec;
 use crate::rpc::EthApiCmd;
 use clap::Parser;
 use sc_cli::{
   KeySubcommand, SignCmd, VanityCmd, VerifyCmd, CliConfiguration, DefaultConfigurationValues,
-  ChainSpec, ImportParams, KeystoreParams, NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
+  ChainSpec, ImportParams, KeystoreParams, NetworkParams, Result, SharedParams,
 };
 use std::path::PathBuf;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use regex::Regex;
-use sc_telemetry::TelemetryEndpoints;
+use std::net::{SocketAddr};
 use sc_service::{
-  config::{BasePath, PrometheusConfig, TransactionPoolOptions},
-	Role,
+  config::{BasePath, PrometheusConfig},
 };
 
 /// Possible subcommands of the main binary.
