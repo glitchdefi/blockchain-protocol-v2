@@ -137,7 +137,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
   spec_name: create_runtime_str!("glitch"),
   impl_name: create_runtime_str!("glitch"),
   authoring_version: 1,
-  spec_version: 114,
+  spec_version: 115,
   impl_version: 1,
   apis: RUNTIME_API_VERSIONS,
   transaction_version: 1,
