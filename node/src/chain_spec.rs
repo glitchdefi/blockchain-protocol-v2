@@ -350,7 +350,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
       //ID
       "glitch_mainnet",
       ChainType::Live,
-      move || glitch_genesis(
+      move || glitch_genesis_mainnet(
           wasm_binary,
           // Initial PoA authories
           vec![
@@ -396,7 +396,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
         ),
       ],
           // root
-          hex!["d8d222c44e7b678dc07a1136ca146c8cf71d46d7327b67ab3d6abe3b4f83cb3d"].into(),
+          hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(),
           vec![
               hex!["1608a5e4d16f4b694a164372e1fd5af8944514d7cec9263fec457bac96e25565"].into(),
               hex!["9c5f9d91b99f8b1f25cf075ba57839734f3e249b72adcf04899a46c8cfd95b4e"].into(),
@@ -415,19 +415,7 @@ pub fn glitch_mainnet_config() -> Result<ChainSpec, String> {
       // Bootnodes
       // node-key=0decb1a3d303a8849a06e9c258698929ee1dfdc524fddc7be1771becd7236e29
       vec![
-           "/dns/fullnodes-mainnet-1.glitch.finance/tcp/30333/p2p/12D3KooWFKSEVZGNrS6THQ6J2vSgLDePdXXz9HYE6TtgopZV22T1"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-1.glitch.finance/tcp/30333/p2p/12D3KooWPRSGH3LnwG5Uhj9Nm7qY7hkdrhd4vg4znb49ix9ADZwD"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-2.glitch.finance/tcp/30333/p2p/12D3KooWBEyY6ySQqjniaqVHH1JtiMVU5KmSPvoPgqkpp6XhBjEt"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-3.glitch.finance/tcp/30333/p2p/12D3KooWKwDVXckeQ86PrNFCyrbaA4sEkg9hPY9a5fe2yZ3gSRX1"
-        .parse()
-        .unwrap(),
-          "/dns/validatornodes-mainnet-4.glitch.finance/tcp/30333/p2p/12D3KooWRYMq2fD7cRikXXc9doocmBNw37tfQTKSnPfEfqeaMyG3"
+           "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWE9d5iYYuom8HZnPVcBcWZ9vdJQrM8pSjJJuGBJywcWDx"
         .parse()
         .unwrap(),
       ],
@@ -654,4 +642,71 @@ fn glitch_genesis(
             admin_genesis: Some(AccountId::from_str("0x88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567").unwrap())
         }
     }
+}
+
+fn glitch_genesis_mainnet(
+    wasm_binary: &[u8],
+    initial_authorities: Vec<(
+        AccountId,
+        GrandpaId,
+        BabeId,
+        ImOnlineId,
+        AuthorityDiscoveryId,
+    )>,
+    root_key: AccountId,
+    endowed_accounts: Vec<AccountId>,
+    enable_println: bool,
+    endowed_eth_accounts: BTreeMap<H160, GenesisAccount>,
+) -> GenesisConfig {
+
+  let initial_balances: Vec<(AccountId, Balance)> = vec![
+    (hex!["004028fd0cf9675e2c1698c5c539f5b273e73c490cd3fb54f32923e630e66922"].into(), 8789888770000000000000000u128.into()),
+    (hex!["1290c0fa454d01631a80f6b62dd080ed4e1a76c9cdef6045594dc7e2d226eb44"].into(), 8789888770000000000000000u128.into()),
+    (hex!["1c282c8b1e00a3b7ba2d7a4466a23420cb398aa6e53ca8a3ec75f92cfd93e97b"].into(), 8789888770000000000000000u128.into()),
+    (hex!["4e5b90d22cb365beeed1a96ffea8175e30daacb628898998810f57ec65cf7969"].into(), 8789888770000000000000000u128.into()),
+    (hex!["501934c8d7b257fbadd003bb4a29a5adb9fce7fa8d659e28d473002f5fffcf65"].into(), 8789888770000000000000000u128.into()),
+    (hex!["66b4c4464cfd187ae8206a29fe7079ec156d37af10d763e5171da19d66bca742"].into(), 8789888770000000000000000u128.into()),
+    (hex!["9c5f9d91b99f8b1f25cf075ba57839734f3e249b72adcf04899a46c8cfd95b4e"].into(), 8789888770000000000000000u128.into()),
+    (hex!["c4a01a3a57602229e112de1449d83cfbbfbc6d423da7e0ab7baeacfcf83f1d2f"].into(), 8789888770000000000000000u128.into()),
+    (hex!["d8412bac516c4c079016a8ae6eefb983837274d884868dc9528e6a2a27dfbb0d"].into(), 8789888770000000000000000u128.into()),
+    (hex!["1608a5e4d16f4b694a164372e1fd5af8944514d7cec9263fec457bac96e25565"].into(), 7529883938533221586000000u128.into()),
+    (hex!["5c790cbdc11a4bf8934250eb27bf26f2ea05db67b4f5fa48a760bcfd9ef43b49"].into(), 330000000200000000000000u128.into()),
+    (hex!["2600c75f5fe2ddb65676361769e637069cb2041622979ba118a68993279deb0b"].into(), 330000000100000000000000u128.into()),
+    (hex!["68f1d67412d6528992d391025dbc36a3261c1efaf22066dff692b2e4c1fb726a"].into(), 178416986451253370000000u128.into()),
+    (hex!["42db32bc3741422b85c021bddfac3a558a83528143b1be501cb8e2c87dd3136f"].into(), 139956475391367500000000u128.into()),
+    (hex!["2cc43f0eb835443c7c6c01ed86095a2235ac8f53674f81ac1a71ed98187f5615"].into(), 100624997082378040000000u128.into()),
+    (hex!["065647e8ae29ae3f696f1c4087852a60bfb2ba05d46c59d123b7767a90ed8c6d"].into(), 89999997082378040000000u128.into()),
+    (hex!["068e505204f46e1fc793b82f64bab6d64c05e783fa93c37a147a9a527c66d174"].into(), 89999997082378040000000u128.into()),
+    (hex!["0a567658e49a30fd7b4cb5055cfea38fda48f93b758aeb5090cf19a7fa3ff64e"].into(), 89999997082378040000000u128.into()),
+    (hex!["407308fc2f0166f6b0b6162f1103078b453cbefb0650374b119e899b2832f368"].into(), 89999997082378040000000u128.into()),
+    (hex!["4ae8af1430acada6f9d7bc7ce63ab57ac22ecd3d703438e5d365b3eff3f8da28"].into(), 89999997082378040000000u128.into()),
+    (hex!["5e6c33f6942d7d02f3600ac9f22ff3f1744c32db75ee472d6aa7c36a024e6d1c"].into(), 89999997082378040000000u128.into()),
+    (hex!["76799daa6ed897dfaff6df7eb2bec97e0d20f193af8d6b05725cc9413c7b7068"].into(), 89999997082378040000000u128.into()),
+    (hex!["7c9be668773083c243b11beeaef3c43cdb20a3c0c4945d0abf69e15261541808"].into(), 89999997082378040000000u128.into()),
+    (hex!["84f86df3cec9c1fafec26637ba3c31a5a949d7dc53c7a464648269b7da7d8310"].into(), 89999997082378040000000u128.into()),
+    (hex!["8a40b984a216c8ab3b8344eb504de0d898039861adeae0469c50c3eeeaacbf51"].into(), 89999997082378040000000u128.into()),
+    (hex!["a0df6d97e02ace0afee5119fe25896e70a51895b577d6250870741ab0c2d290f"].into(), 89999997082378040000000u128.into()),
+    (hex!["d0e58b65a141d28ea3a302bab6c825087f9f7ed424cc26c673c7985f8fad5a41"].into(), 89999997082378040000000u128.into()),
+    (hex!["f6c7b0308ab0fb7be7ec8d381814bf911fe57d2166d3cfa21d9286c4b94eaa3c"].into(), 89999997082378040000000u128.into()),
+    (hex!["aaa67949d58eb167f493f3d5c6c22f9dfba5d4e183292f9809a1031a199b6702"].into(), 981996332215200000000u128.into()),
+    (hex!["b2b6c5fa937df57b3adf244bf284fa10113cdc96b680c7e28e4ba86e723ad562"].into(), 11758539674242000000u128.into()),
+    (hex!["d8d222c44e7b678dc07a1136ca146c8cf71d46d7327b67ab3d6abe3b4f83cb3d"].into(), 5000000000000000000u128.into()),
+    (hex!["9234b3143cfcde6c6a67fc601513c54ae069e9eb1e5ff3636d3c664602844e4e"].into(), 4189464809180000000u128.into()),
+    (hex!["0a276900bee9d28fa31728814afa5194cb3e6b21b55370a1ece060e5ec6d5f01"].into(), 1000000000000000000u128.into()),
+    (hex!["a40aa48af6589f95ca378e1bc3eac36f4447b09c748d56409bd4968f46fc405f"].into(), 1000000000000000000u128.into()),
+    (hex!["4aa44e08b891d389fb0c1d56630437830785b5ff9083c9b4e4cc0ac5793b272d"].into(), 987727686650000000u128.into()),
+    (hex!["8e65621224b9e3109d4826c62ef8e349a214f4111d73457d98dc72cc6a30ed7d"].into(), 478106479712000000u128.into()),
+    (hex!["6d6f646c66756e64726576650000000000000000000000000000000000000000"].into(), 100000000000000000u128.into()),
+    (hex!["6d6f646c70792f74727372790000000000000000000000000000000000000000"].into(), 100000000000000000u128.into()),
+    //for testing
+    (hex!["88b4fc7317577d1582969bbc2c3e179926e07c88a7507302fec5fd4f662a9567"].into(), 100000000_000000000000000000u128.into()),
+  ];
+
+  let mut ret = glitch_genesis(wasm_binary, initial_authorities.clone(), root_key, endowed_accounts, enable_println, endowed_eth_accounts);
+  ret.balances = BalancesConfig {
+    // Configure endowed accounts with initial balance of 1 << 60.
+    balances: initial_balances,
+  };
+
+  ret
 }
