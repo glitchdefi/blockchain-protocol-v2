@@ -2005,7 +2005,6 @@ dependencies = [
 [[package]]
 name = "fc-rpc"
 version = "2.0.0-dev"
-source = "git+https://github.com/clover-network/frontier.git?branch=pangwa/substrate-v0.9.26#485a038af49c8533ba40b7f4533bbd640d3be8fe"
 dependencies = [
  "ethereum",
  "ethereum-types",
@@ -2058,7 +2057,6 @@ dependencies = [
 [[package]]
 name = "fc-rpc-core"
 version = "1.1.0-dev"
-source = "git+https://github.com/clover-network/frontier.git?branch=pangwa/substrate-v0.9.26#485a038af49c8533ba40b7f4533bbd640d3be8fe"
 dependencies = [
  "ethereum",
  "ethereum-types",
