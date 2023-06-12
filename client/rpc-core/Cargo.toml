@@ -1,0 +1,21 @@
+[package]
+name = "fc-rpc-core"
+version = "1.1.0-dev"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+description = "RPC traits of Ethereum."
+license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
+
+[dependencies]
+jsonrpsee = { version = "0.14.0", features = ["server", "macros"] }
+rustc-hex = "2.1.0"
+ethereum = { version = "0.12", features = ["with-codec"] }
+sha3 = "0.8"
+ethereum-types = "0.13"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rlp = "0.5"
+
+futures = { version = "0.3.1", features = ["compat"] }
+fc-tracer = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26" }
+fp-trace-rpc = { git = "https://github.com/clover-network/frontier.git", branch = "pangwa/substrate-v0.9.26" }

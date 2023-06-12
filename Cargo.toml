@@ -103,6 +103,8 @@ evm-gasometer = { git = "https://github.com/clover-network/evm", branch = "pangw
 
 [patch.'https://github.com/clover-network/frontier.git']
 pallet-ethereum = { path = "frame/ethereum" }
+fc-rpc-core = { path = "client/rpc-core" }
+fc-rpc = { path = "client/rpc" }
 
 [patch.'https://github.com/paritytech/substrate.git']
 pallet-staking = { path = "frame/staking" }
